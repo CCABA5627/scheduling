@@ -8,14 +8,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; font-size: 14px; }
 .app { display: flex; flex-direction: column; min-height: 100vh; }
-.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,.15); padding: 0 1.25rem; display: flex; align-items: center; height: 48px; overflow-x: auto; }
+.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,.15); padding: 0 1.25rem; display: flex; align-items: center; height: 48px; overflow-x: auto; gap: 0; }
 .nav-brand { font-size: 14px; font-weight: 500; margin-right: 1.5rem; white-space: nowrap; }
 .nav-tab { padding: 0 .75rem; height: 48px; display: flex; align-items: center; font-size: 12px; color: #666; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .nav-tab:hover { color: #111; }
 .nav-tab.active { color: #111; border-bottom-color: #534AB7; font-weight: 500; }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 1rem; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-left: 1rem; flex-shrink: 0; }
 .si { font-size: 11px; color: #888; white-space: nowrap; }
 .si.saved { color: #1D9E75; } .si.unsaved { color: #EF9F27; }
+.gs-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.gs-badge.connected { background: #E1F5EE; color: #085041; }
+.gs-badge.disconnected { background: #f0f0ee; color: #888; }
+.gs-badge.syncing { background: #E6F1FB; color: #185FA5; }
+.gs-badge.error { background: #FAECE7; color: #993C1D; }
 .main { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 48px); }
 .sidebar { width: 230px; background: #fff; border-right: 0.5px solid rgba(0,0,0,.15); overflow-y: auto; flex-shrink: 0; }
 .content { flex: 1; overflow-y: auto; padding: 1.25rem; }
@@ -60,13 +65,14 @@ body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; 
 .mp { background: #F5C4B3; color: #4A1B0C; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
 .cob { background: #FAECE7; border: 0.5px solid #F0997B; border-radius: 10px; padding: 1rem; margin-bottom: .875rem; }
 .cot { font-size: 13px; font-weight: 500; color: #4A1B0C; margin-bottom: .5rem; }
-input[type=text], select { padding: 6px 9px; border: 0.5px solid rgba(0,0,0,.2); border-radius: 6px; font-size: 12px; background: #fff; color: #111; font-family: inherit; width: 100%; }
-input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; }
-.btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; border: 0.5px solid rgba(0,0,0,.2); background: #fff; color: #111; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+input[type=text], input[type=password], select, textarea { padding: 6px 9px; border: 0.5px solid rgba(0,0,0,.2); border-radius: 6px; font-size: 12px; background: #fff; color: #111; font-family: inherit; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #7F77DD; }
+.btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; border: 0.5px solid rgba(0,0,0,.2); background: #fff; color: #111; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: background .1s; }
 .btn:hover { background: #eee; }
 .btn-p { background: #534AB7; color: #fff; border-color: #534AB7; } .btn-p:hover { background: #3C3489; }
 .btn-d { background: #D85A30; color: #fff; border-color: #D85A30; } .btn-d:hover { background: #993C1D; }
 .btn-g { background: #1D9E75; color: #fff; border-color: #1D9E75; } .btn-g:hover { background: #085041; }
+.btn-gs { background: #4285F4; color: #fff; border-color: #4285F4; } .btn-gs:hover { background: #2b6dd1; }
 .btn-sm { padding: 3px 8px; font-size: 11px; }
 .es { text-align: center; padding: 2.5rem 1rem; color: #888; }
 .lg { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
@@ -78,18 +84,12 @@ input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; }
 .sx { overflow-x: auto; }
 .sp { background: #fff; border: 0.5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
 .sp h3 { font-size: 14px; font-weight: 500; margin-bottom: .75rem; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; max-width: 320px; }
 .toast.err { background: #D85A30; }
-
-/* Edit data picker */
 .exs { background: #f5f5f3; border-radius: 10px; padding: 1rem; margin-top: .625rem; }
 .exs h4 { font-size: 11px; font-weight: 500; color: #777; margin-bottom: .625rem; text-transform: uppercase; letter-spacing: .04em; }
 .dr2 { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .5rem; }
-.dp {
-  min-width: 56px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
-  cursor: pointer; border: 2px solid rgba(0,0,0,.18); background: #fff; color: #888;
-  font-family: inherit; text-align: center; transition: all .12s; user-select: none;
-}
+.dp { min-width: 56px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 2px solid rgba(0,0,0,.18); background: #fff; color: #888; font-family: inherit; text-align: center; transition: all .12s; user-select: none; }
 .dp:hover:not(.on) { border-color: #7F77DD; color: #534AB7; background: #EEEDFE; }
 .dp.on { background: #534AB7; color: #fff; border-color: #534AB7; }
 .hb { margin-top: .875rem; }
@@ -98,16 +98,24 @@ input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; }
 .hbc { font-size: 11px; color: #888; }
 .slnk { font-size: 11px; color: #534AB7; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; margin-left: auto; }
 .hg { display: flex; flex-wrap: wrap; gap: 4px; }
-.hc {
-  padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;
-  border: 2px solid rgba(0,0,0,.12); background: #fff; color: #777;
-  font-family: inherit; transition: all .1s; user-select: none; white-space: nowrap;
-}
+.hc { padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: 2px solid rgba(0,0,0,.12); background: #fff; color: #777; font-family: inherit; transition: all .1s; user-select: none; white-space: nowrap; }
 .hc:hover:not(.on) { border-color: #5DCAA5; color: #0F6E56; background: #E1F5EE; }
 .hc.on { background: #1D9E75; color: #fff; border-color: #1D9E75; }
 .hc.rp { background: #9FE1CB; border-color: #1D9E75; color: #04342C; }
 .rh { font-size: 11px; color: #0F6E56; background: #E1F5EE; border-radius: 6px; padding: 5px 10px; margin-top: 6px; }
 .it { font-size: 11px; color: #888; margin-top: 6px; font-style: italic; }
+
+/* Google Sheets setup panel styles */
+.gs-setup { background: #fff; border: 2px solid #4285F4; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.gs-setup h3 { font-size: 14px; font-weight: 500; margin-bottom: .5rem; display: flex; align-items: center; gap: 6px; }
+.gs-step { display: flex; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid rgba(0,0,0,.08); }
+.gs-step-num { width: 22px; height: 22px; border-radius: 50%; background: #4285F4; color: #fff; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.gs-step-body { font-size: 12px; line-height: 1.6; color: #333; flex: 1; }
+.gs-step-body code { background: #f0f0ee; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; }
+.gs-step-body a { color: #4285F4; }
+.field-row { display: flex; flex-direction: column; gap: 4px; margin-top: .625rem; }
+.field-row label { font-size: 11px; font-weight: 500; color: #555; }
+.sync-log { background: #f5f5f3; border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #555; font-family: monospace; max-height: 80px; overflow-y: auto; margin-top: 8px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -122,7 +130,11 @@ input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; }
     <div class="nav-tab" data-tab="callout" onclick="go('callout')">Callout</div>
     <div class="nav-tab" data-tab="data" onclick="go('data')">Edit Data</div>
     <div class="nav-tab" data-tab="save" onclick="go('save')">Save/Load</div>
-    <div class="nav-right"><span class="si" id="si">Not saved</span></div>
+    <div class="nav-tab" data-tab="gsheets" onclick="go('gsheets')">&#x1F4CA; Google Sheets</div>
+    <div class="nav-right">
+      <span id="gs-badge" class="gs-badge disconnected">Not connected</span>
+      <span class="si" id="si">Not saved</span>
+    </div>
   </div>
   <div class="main" id="mc"></div>
 </div>
@@ -134,6 +146,7 @@ function bT(){const o=[];for(let h=8;h<=17;h++){for(let m=0;m<60;m+=15){if(h===1
 const TIMES=bT();
 function t2m(t){const[ti,ap]=t.split(' ');const[h,m]=ti.split(':').map(Number);let hr=h;if(ap==='PM'&&h!==12)hr=h+12;if(ap==='AM'&&h===12)hr=0;return hr*60+m;}
 const SK='podscheduler_v3';
+const GS_SK='podscheduler_gs_config';
 
 const DD={
   clients:[
@@ -161,115 +174,201 @@ const DD={
   }
 };
 
-// selectedDays: persisted separately so toggling a day OFF then ON works even with 0 slots
-function initSelDays(clients){
-  const sd={};
-  clients.forEach(c=>{
-    sd[c.id]=new Set(Object.keys(c.schedule).filter(d=>DAYS.includes(d)));
-  });
-  return sd;
-}
-function initSelDaysStaff(staff){
-  const sd={};
-  staff.forEach(s=>{
-    sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));
-  });
-  return sd;
-}
+function initSD(clients){const sd={};clients.forEach(c=>{sd[c.id]=new Set(Object.keys(c.schedule).filter(d=>DAYS.includes(d)));});return sd;}
+function initSDS(staff){const sd={};staff.forEach(s=>{sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));});return sd;}
 
-let S={
-  tab:'today',
-  ...JSON.parse(JSON.stringify(DD)),
-  selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],
-  edTab:'clients',expEdit:null,
-  rStart:null,rDay:null,rEid:null,rType:null,
-  dirty:false,lastSaved:null,
+let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],edTab:'clients',expEdit:null,rStart:null,rDay:null,rEid:null,rType:null,dirty:false,lastSaved:null};
+S.selDaysC=initSD(S.clients);
+S.selDaysS=initSDS(S.staff);
+
+// ---- Google Sheets config ----
+let GS = {
+  apiKey: '',
+  spreadsheetId: '',
+  connected: false,
+  syncing: false,
+  lastSync: null,
+  log: [],
 };
-S.selDaysC=initSelDays(S.clients);
-S.selDaysS=initSelDaysStaff(S.staff);
 
-function tryLoad(){
-  try{
-    const r=localStorage.getItem(SK);
-    if(r){
-      const p=JSON.parse(r);
-      S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;
-      S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;
-      S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;
-      S.lastSaved=p.savedAt||null;S.dirty=false;
-      S.selDaysC=initSelDays(S.clients);
-      S.selDaysS=initSelDaysStaff(S.staff);
-      updSI();return true;
-    }
-  }catch(e){}return false;
+function loadGSConfig(){
+  try{const r=localStorage.getItem(GS_SK);if(r){const p=JSON.parse(r);GS.apiKey=p.apiKey||'';GS.spreadsheetId=p.spreadsheetId||'';GS.connected=!!(GS.apiKey&&GS.spreadsheetId);}}catch(e){}
 }
-function doSave(){
-  try{
-    const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};
-    localStorage.setItem(SK,JSON.stringify(d));
-    S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved',false);return true;
-  }catch(e){showToast('Save failed',true);return false;}
+function saveGSConfig(){
+  try{localStorage.setItem(GS_SK,JSON.stringify({apiKey:GS.apiKey,spreadsheetId:GS.spreadsheetId}));}catch(e){}
 }
-function markDirty(){S.dirty=true;updSI();}
-function updSI(){
-  const el=document.getElementById('si');if(!el)return;
-  if(S.dirty){el.className='si unsaved';el.textContent='Unsaved changes';}
-  else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
-  else{el.className='si';el.textContent='Not saved yet';}
+function gsLog(msg,ok=true){
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  GS.log.unshift(`${t} ${ok?'✓':'✗'} ${msg}`);
+  if(GS.log.length>20)GS.log=GS.log.slice(0,20);
+  const el=document.getElementById('gs-log');if(el)el.innerHTML=GS.log.join('<br>');
 }
-function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
-function exportJSON(){
-  const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString(),version:3};
-  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
-  const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);
-  showToast('Downloaded backup',false);
+function updGSBadge(){
+  const el=document.getElementById('gs-badge');if(!el)return;
+  if(GS.syncing){el.className='gs-badge syncing';el.textContent='Syncing...';}
+  else if(GS.connected&&GS.lastSync){el.className='gs-badge connected';el.textContent='Sheets ✓ '+new Date(GS.lastSync).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+  else if(GS.connected){el.className='gs-badge connected';el.textContent='Sheets connected';}
+  else{el.className='gs-badge disconnected';el.textContent='Sheets not connected';}
 }
-function importJSON(){
-  const i=document.createElement('input');i.type='file';i.accept='.json';
-  i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-    r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;
-      S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.assignments=p.assignments||{};
-      S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];
-      S.selDaysC=initSelDays(S.clients);S.selDaysS=initSelDaysStaff(S.staff);
-      markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};
-    r.readAsText(f);};i.click();
-}
-function resetData(){
-  if(!confirm('Reset to sample data?'))return;
-  const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);
-  S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;
-  S.selDaysC=initSelDays(S.clients);S.selDaysS=initSelDaysStaff(S.staff);
-  try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset',false);
-}
-function exportCSV(){
-  const rows=[];
-  rows.push(['PodScheduler Export','','','','','','','']);
-  rows.push(['Generated:',new Date().toLocaleString()]);rows.push([]);
-  rows.push(['=== WEEKLY SCHEDULE ===']);
-  rows.push(['Client','Day','Start','End','Assigned Staff','In Pod?','Slots','Notes']);
+
+// ---- Build sheet data ----
+function buildWeeklyRows(){
+  const rows=[['Client','Day','Start','End','Assigned Staff','In Pod?','# Slots','Status']];
   S.clients.forEach(c=>{DAYS.forEach(d=>{
     const slots=(c.schedule[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!slots.length)return;
     const groups=[];let cur=null;
     slots.forEach(t=>{const sid=S.assignments[c.id]?.[d]?.[t];if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,n:1};groups.push(cur);}else{cur.to=t;cur.n++;}});
-    groups.forEach(g=>{const sn=g.sid?(gs(g.sid)?.name||'?'):'UNASSIGNED';const ip=g.sid?(S.pods[c.id]||[]).includes(g.sid)?'Yes':'No':'-';rows.push([c.name,d,g.from,g.to,sn,ip,g.n,'']);});
+    groups.forEach(g=>{
+      const sn=g.sid?(gs2(g.sid)?.name||'?'):'UNASSIGNED';
+      const ip=g.sid?(S.pods[c.id]||[]).includes(g.sid)?'Yes':'No':'-';
+      const status=g.sid?'Covered':'NEEDS COVERAGE';
+      rows.push([c.name,d,g.from,g.to,sn,ip,g.n,status]);
+    });
   });});
-  rows.push([]);rows.push(['=== PODS ===']);
-  rows.push(['Client','Staff 1','Staff 2','Staff 3','Staff 4','Staff 5','Staff 6','Staff 7']);
-  S.clients.forEach(c=>{const p=(S.pods[c.id]||[]).map(sid=>gs(sid)?.name||sid);rows.push([c.name,...p,...Array(Math.max(0,7-p.length)).fill('')]);});
-  rows.push([]);rows.push(['=== STAFF AVAILABILITY ===']);
-  rows.push(['Staff','Day','From','To','Slots','Hours']);
-  S.staff.forEach(s=>{DAYS.forEach(d=>{const sl=(s.availability[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!sl.length)return;rows.push([s.name,d,sl[0],sl[sl.length-1],sl.length,(sl.length*15/60).toFixed(2)+'h']);});});
-  const csv=rows.map(r=>r.map(v=>{const s=String(v||'');return s.includes(',')||s.includes('"')?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
-  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='PodScheduler-Export.csv';a.click();URL.revokeObjectURL(u);
-  showToast('Exported CSV (open in Excel)',false);
+  return rows;
+}
+function buildPodsRows(){
+  const rows=[['Client','Staff 1','Staff 2','Staff 3','Staff 4','Staff 5','Staff 6','Staff 7','Pod Size','Status']];
+  S.clients.forEach(c=>{
+    const pod=(S.pods[c.id]||[]).map(sid=>gs2(sid)?.name||sid);
+    const sz=pod.length;
+    const status=sz>=4&&sz<=7?'Good':'Check pod size';
+    rows.push([c.name,...pod,...Array(Math.max(0,7-pod.length)).fill(''),sz,status]);
+  });
+  return rows;
+}
+function buildStaffRows(){
+  const rows=[['Staff','Day','Available From','Available To','Total Slots','Hours/Day','Client Pods']];
+  S.staff.forEach(s=>{
+    const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(s.id)).map(([cid])=>gc2(cid)?.name||cid);
+    DAYS.forEach(d=>{
+      const slots=(s.availability[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!slots.length)return;
+      rows.push([s.name,d,slots[0],slots[slots.length-1],slots.length,(slots.length*15/60).toFixed(2),myC.join(', ')]);
+    });
+  });
+  return rows;
+}
+function buildCalloutRows(){
+  const rows=[['If this staff calls out','Client','Day','Their slot','Pod backup options','Overlap slots']];
+  S.staff.forEach(s=>{
+    const asgnd=[];
+    Object.entries(S.assignments).forEach(([cid,days])=>{Object.entries(days).forEach(([day,slots])=>{Object.entries(slots).forEach(([slot,sid])=>{if(sid===s.id)asgnd.push({cid,day,slot});});});});
+    const grouped={};
+    asgnd.forEach(a=>{const k=a.cid+'_'+a.day;if(!grouped[k])grouped[k]={cid:a.cid,day:a.day,slots:[]};grouped[k].slots.push(a.slot);});
+    Object.values(grouped).forEach(g=>{
+      const c=gc2(g.cid);const sl=g.slots.slice().sort((a,b)=>t2m(a)-t2m(b));
+      const range=sl.length>1?sl[0]+' - '+sl[sl.length-1]:sl[0];
+      const pod=S.pods[g.cid]||[];
+      const backups=pod.filter(pid=>pid!==s.id).map(pid=>{const st=gs2(pid);if(!st)return null;let ov=0;(gc2(g.cid)?.schedule[g.day]||[]).forEach(t=>{if((st.availability[g.day]||[]).includes(t))ov++;});return {name:st.name,ov};}).filter(Boolean).sort((a,b)=>b.ov-a.ov);
+      const bStr=backups.length>0?backups.slice(0,3).map(b=>`${b.name}(${b.ov})`).join(' | '):'No backup available';
+      rows.push([s.name,c?.name||'?',g.day,range,bStr,g.slots.length]);
+    });
+  });
+  return rows;
 }
 
+// ---- Sheets API calls ----
+async function gsRequest(method,endpoint,body=null){
+  if(!GS.apiKey||!GS.spreadsheetId)throw new Error('Not configured');
+  const base=`https://sheets.googleapis.com/v4/spreadsheets/${GS.spreadsheetId}`;
+  const sep=endpoint.includes('?')?'&':'?';
+  const url=`${base}${endpoint}${sep}key=${GS.apiKey}`;
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(url,opts);
+  const json=await res.json();
+  if(!res.ok)throw new Error(json.error?.message||'API error '+res.status);
+  return json;
+}
+
+async function ensureSheets(){
+  const needed=['Weekly Schedule','Pods','Staff Availability','Callout Coverage'];
+  const meta=await gsRequest('GET','');
+  const existing=(meta.sheets||[]).map(s=>s.properties.title);
+  const missing=needed.filter(n=>!existing.includes(n));
+  if(missing.length>0){
+    await gsRequest('POST',':batchUpdate',{requests:missing.map(title=>({addSheet:{properties:{title}}}))});
+    gsLog(`Created sheets: ${missing.join(', ')}`);
+  }
+}
+
+async function writeSheet(sheetName, rows){
+  const range=`'${sheetName}'!A1`;
+  await gsRequest('PUT',`/values/${encodeURIComponent(range)}?valueInputOption=RAW`,{range,majorDimension:'ROWS',values:rows});
+}
+
+let syncTimer=null;
+function scheduleSyncToSheets(){
+  if(!GS.connected)return;
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncToSheets,2000);
+  updGSBadge();
+}
+
+async function syncToSheets(){
+  if(!GS.connected){gsLog('Not connected',false);return;}
+  GS.syncing=true;updGSBadge();
+  try{
+    await ensureSheets();
+    await writeSheet('Weekly Schedule',buildWeeklyRows());
+    await writeSheet('Pods',buildPodsRows());
+    await writeSheet('Staff Availability',buildStaffRows());
+    await writeSheet('Callout Coverage',buildCalloutRows());
+    GS.lastSync=new Date().toISOString();
+    gsLog('Synced all 4 sheets to Google Sheets');
+    showToast('Synced to Google Sheets',false);
+  }catch(e){
+    gsLog('Sync failed: '+e.message,false);
+    showToast('Sheets sync failed: '+e.message,true);
+  }
+  GS.syncing=false;updGSBadge();
+}
+
+async function testConnection(){
+  if(!GS.apiKey||!GS.spreadsheetId){showToast('Enter API key and Sheet ID first',true);return;}
+  GS.syncing=true;updGSBadge();
+  try{
+    const meta=await gsRequest('GET','');
+    GS.connected=true;GS.lastSync=null;
+    saveGSConfig();
+    gsLog('Connected to: '+meta.properties.title);
+    showToast('Connected! Syncing now...',false);
+    await syncToSheets();
+    render();
+  }catch(e){
+    GS.connected=false;
+    gsLog('Connection failed: '+e.message,false);
+    showToast('Connection failed: '+e.message,true);
+  }
+  GS.syncing=false;updGSBadge();
+}
+
+function disconnectGS(){
+  GS.connected=false;GS.apiKey='';GS.spreadsheetId='';GS.lastSync=null;
+  try{localStorage.removeItem(GS_SK);}catch(e){}
+  updGSBadge();render();showToast('Disconnected from Google Sheets',false);
+}
+
+// ---- Local save ----
+function tryLoad(){
+  try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);updSI();return true;}}catch(e){}return false;
+}
+function doSave(){
+  try{const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved locally',false);return true;}
+  catch(e){showToast('Save failed',true);return false;}
+}
+function markDirty(){S.dirty=true;updSI();scheduleSyncToSheets();}
+function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Unsaved';}else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved';}}
+function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString(),version:3};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);showToast('Downloaded backup',false);}
+function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.assignments=p.assignments||{};S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
+function resetData(){if(!confirm('Reset to sample data?'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset',false);}
+
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
-function gc(id){return S.clients.find(c=>c.id===id);}
-function gs(id){return S.staff.find(s=>s.id===id);}
-function overlap(sid,cid){const c=gc(cid),s=gs(sid);if(!c||!s)return 0;let o=0;DAYS.forEach(d=>{const cs=new Set(c.schedule[d]||[]);(s.availability[d]||[]).forEach(t=>{if(cs.has(t))o++;});});return o;}
-function bestFor(cid,day,slot,excl){const pod=S.pods[cid]||[];const res=[];pod.forEach(sid=>{if(sid===excl||S.calledOut.includes(sid))return;const s=gs(sid);if(!s)return;if((s.availability[day]||[]).includes(slot))res.push({sid,score:overlap(sid,cid)});});return res.sort((a,b)=>b.score-a.score);}
+function gc2(id){return S.clients.find(c=>c.id===id);}
+function gs2(id){return S.staff.find(s=>s.id===id);}
+function overlap(sid,cid){const c=gc2(cid),s=gs2(sid);if(!c||!s)return 0;let o=0;DAYS.forEach(d=>{const cs=new Set(c.schedule[d]||[]);(s.availability[d]||[]).forEach(t=>{if(cs.has(t))o++;});});return o;}
+function bestFor(cid,day,slot,excl){const pod=S.pods[cid]||[];const res=[];pod.forEach(sid=>{if(sid===excl||S.calledOut.includes(sid))return;const s=gs2(sid);if(!s)return;if((s.availability[day]||[]).includes(slot))res.push({sid,score:overlap(sid,cid)});});return res.sort((a,b)=>b.score-a.score);}
 function gA(cid,day,slot){return S.assignments[cid]?.[day]?.[slot]||null;}
 function sA(cid,day,slot,sid){if(!S.assignments[cid])S.assignments[cid]={};if(!S.assignments[cid][day])S.assignments[cid][day]={};S.assignments[cid][day][slot]=sid;}
 function dA(cid,day,slot){if(S.assignments[cid]?.[day])delete S.assignments[cid][day][slot];}
@@ -282,22 +381,22 @@ function rToday(){
   const today=todayDay();const slots=[];
   S.clients.forEach(c=>{const ds=(c.schedule[today]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=gA(c.id,today,t);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid};groups.push(cur);}else cur.to=t;});groups.forEach(g=>slots.push({client:c,from:g.from,to:g.to,sid:g.sid}));});
   slots.sort((a,b)=>t2m(a.from)-t2m(b.from));
-  const banner=S.calledOut.length>0?`<div class="cob"><div class="cot">Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gs(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span onclick="rmCO('${sid}')" style="cursor:pointer">x</span></span>`;}).join('')}</div></div>`:'';
+  const banner=S.calledOut.length>0?`<div class="cob"><div class="cot">Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gs2(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span onclick="rmCO('${sid}')" style="cursor:pointer">x</span></span>`;}).join('')}</div></div>`:'';
   const cov=slots.filter(s=>s.sid&&!S.calledOut.includes(s.sid)).length;
   const unc=slots.filter(s=>!s.sid||S.calledOut.includes(s.sid)).length;
   const sh=slots.length===0?`<div class="es">No sessions for ${today}</div>`
     :slots.map(sl=>{const co=sl.sid&&S.calledOut.includes(sl.sid);const bdr=co?'border-color:#F0997B;background:#FAECE7':'';
-      const chip=sl.sid?(co?`<span class="cc">&#9888; ${gs(sl.sid)?.name} (out)</span>`:`<span class="sc2">${gs(sl.sid)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
+      const chip=sl.sid?(co?`<span class="cc">&#9888; ${gs2(sl.sid)?.name} (out)</span>`:`<span class="sc2">${gs2(sl.sid)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
       const btn=co?`<button class="btn btn-p btn-sm" onclick="goCallout2('${sl.client.id}')">Find cover</button>`:`<button class="btn btn-sm" onclick="qA('${sl.client.id}','${today}')">Reassign</button>`;
       return`<div class="ts" style="${bdr}"><div style="font-size:11px;color:#666;min-width:110px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="av av-c">${ini(sl.client.name)}</div><div style="font-size:12px;font-weight:500;flex:1">${sl.client.name}</div>${chip}${btn}</div>`;}).join('');
+  const gsBtn=GS.connected?`<button class="btn btn-gs btn-sm" style="width:100%;margin-top:5px" onclick="syncToSheets()">Sync to Sheets now</button>`:`<button class="btn btn-sm" style="width:100%;margin-top:5px;font-size:11px" onclick="go('gsheets')">Connect Google Sheets</button>`;
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Quick callout</div>
     <select id="co-sel" style="margin-bottom:6px"><option value="">Select staff...</option>${S.staff.map(s=>`<option value="${s.id}"${S.calledOut.includes(s.id)?' disabled':''}>${s.name}${S.calledOut.includes(s.id)?' (out)':''}</option>`).join('')}</select>
     <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button></div>
     <div class="ss"><div class="sl">Today - ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
       <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div></div>
-    <div class="ss"><button class="btn btn-g" style="width:100%;margin-bottom:5px" onclick="doSave()">Save now</button>
-    <button class="btn" style="width:100%" onclick="exportCSV()">Export to Excel/CSV</button></div>
+    <div class="ss"><button class="btn btn-g" style="width:100%;margin-bottom:5px" onclick="doSave()">Save locally</button>${gsBtn}</div>
   </div><div class="content">${banner}<div class="card"><div class="ch"><div class="ct">Today's Sessions - ${today}</div></div>${sh}</div></div></div>`;
 }
 function rWeek(){
@@ -308,7 +407,7 @@ function rWeek(){
   const cov=Object.values(byDay).reduce((s,a)=>s+a.filter(x=>x.sid&&!x.co).length,0);
   const cols=DAYS.map(d=>{const sessions=byDay[d];const isToday=d===todayDay();
     const inner=sessions.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`
-      :sessions.map(sl=>{const cls=sl.co?'wco':sl.sid?'wa':'wu';const sname=sl.sid?(sl.co?`&#9888; ${gs(sl.sid)?.name} (out)`:gs(sl.sid)?.name):'Needs coverage';
+      :sessions.map(sl=>{const cls=sl.co?'wco':sl.sid?'wa':'wu';const sname=sl.sid?(sl.co?`&#9888; ${gs2(sl.sid)?.name} (out)`:gs2(sl.sid)?.name):'Needs coverage';
         return`<div class="wsl"><div style="font-size:10px;color:#888;margin-bottom:3px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="wse ${cls}"><div class="av av-c" style="width:18px;height:18px;font-size:7px">${ini(sl.client.name)}</div><div><div style="font-size:10px;font-weight:500">${sl.client.name}</div><div style="font-size:9px;opacity:.8">${sname}</div></div></div></div>`;}).join('');
     return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}">${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''} <span style="font-size:9px;color:#888">${sessions.length}</span></div>${inner}</div>`;}).join('');
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Week</div>
@@ -318,7 +417,7 @@ function rWeek(){
   </div><div class="content"><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:550px">${cols}</div></div></div></div>`;
 }
 function rClients(){
-  const c=gc(S.selClient);const pods=S.pods[S.selClient]||[];
+  const c=gc2(S.selClient);const pods=S.pods[S.selClient]||[];
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Clients (${S.clients.length})</div>
     ${S.clients.map(cl=>`<div class="si2 ${cl.id===S.selClient?'sel':''}" onclick="selC('${cl.id}')"><div class="av av-c">${ini(cl.name)}</div><span class="in">${cl.name}</span><span class="bx">${(S.pods[cl.id]||[]).length}</span></div>`).join('')}
     <button class="add-btn" onclick="addC()">+ Add client</button></div>
@@ -333,7 +432,7 @@ function rClients(){
   `:'<div class="es">Select a client</div>'}</div></div>`;
 }
 function rStaff(){
-  const s=gs(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
+  const s=gs2(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Staff (${S.staff.length})</div>
     ${S.staff.map(st=>{const out=S.calledOut.includes(st.id);return`<div class="si2 ${st.id===S.selStaff?'sel':''}" onclick="selS('${st.id}')"><div class="av av-s">${ini(st.name)}</div><span class="in">${st.name}</span>${out?'<span class="dr"></span>':''}<span class="bx">${Object.entries(S.pods).filter(([,p])=>p.includes(st.id)).length}</span></div>`;}).join('')}
     <button class="add-btn" onclick="addS()">+ Add staff</button></div>
@@ -343,16 +442,16 @@ function rStaff(){
       <div class="sx">${rAG(s)}</div></div>
     <div class="card"><div class="ch"><div class="ct">Client pods</div></div>
       ${myC.length===0?`<div style="font-size:12px;color:#888">Not in any pods yet</div>`
-        :myC.map(([cid])=>{const cl=gc(cid);if(!cl)return'';return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${overlap(s.id,cid)}</span></div>`;}).join('')}
+        :myC.map(([cid])=>{const cl=gc2(cid);if(!cl)return'';return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${overlap(s.id,cid)}</span></div>`;}).join('')}
     </div>
   `:'<div class="es">Select a staff member</div>'}</div></div>`;
 }
 function rPods(){
   return`<div style="width:100%;flex-direction:column" class="content"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem">All pods overview</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.875rem">
-    ${S.clients.map(c=>{const pod=S.pods[c.id]||[];const tot=pod.reduce((s,sid)=>s+overlap(sid,c.id),0);const ok=pod.length>=4&&pod.length<=7;
+    ${S.clients.map(c=>{const pod=S.pods[c.id]||[];const ok=pod.length>=4&&pod.length<=7;
       return`<div class="card" style="margin:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><div class="av av-c" style="width:28px;height:28px">${ini(c.name)}</div><div><div style="font-size:12px;font-weight:500">${c.name}</div><div style="font-size:10px;color:#888">${pod.length} staff</div></div><span style="margin-left:auto;font-size:10px;padding:2px 7px;border-radius:8px;background:${ok?'#C0DD97':'#F5C4B3'};color:${ok?'#173404':'#4A1B0C'}">${ok?'Good':'Check: '+pod.length}</span></div>
-        ${pod.map(sid=>{const st=gs(sid);const out=S.calledOut.includes(sid);return st?`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-s" style="width:20px;height:20px;font-size:8px">${ini(st.name)}</div><span style="font-size:11px;flex:1">${st.name}</span>${out?'<span class="dr"></span>':''}<span style="font-size:10px;color:#888">${overlap(sid,c.id)}</span></div>`:'';}).join('')}
+        ${pod.map(sid=>{const st=gs2(sid);const out=S.calledOut.includes(sid);return st?`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-s" style="width:20px;height:20px;font-size:8px">${ini(st.name)}</div><span style="font-size:11px;flex:1">${st.name}</span>${out?'<span class="dr"></span>':''}<span style="font-size:10px;color:#888">${overlap(sid,c.id)}</span></div>`:'';}).join('')}
       </div>`;}).join('')}
     </div></div>`;
 }
@@ -364,15 +463,15 @@ function rCallout(){
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Select staff</div>
     ${S.staff.map(s=>{const out=S.calledOut.includes(s.id);return`<div class="si2 ${S.calloutStaff===s.id?'sel':''}" onclick="selCO('${s.id}')"><div class="av av-s">${ini(s.name)}</div><span class="in">${s.name}</span>${out?'<span class="bx" style="background:#F5C4B3;color:#4A1B0C">Out</span>':''}</div>`;}).join('')}
   </div></div><div class="content">${!S.calloutStaff?`<div class="es">Select a staff member to see coverage</div>`:`
-    <div class="cob"><div class="cot">&#9888; Coverage: ${gs(S.calloutStaff)?.name}</div>
+    <div class="cob"><div class="cot">&#9888; Coverage: ${gs2(S.calloutStaff)?.name}</div>
       <div style="display:flex;gap:6px">${S.calledOut.includes(S.calloutStaff)?`<button class="btn btn-sm" onclick="rmCO('${S.calloutStaff}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="mkOut('${S.calloutStaff}')">Mark called out</button>`}</div></div>
     <div class="card"><div class="ch"><div class="ct">Affected sessions</div></div>
       ${groups.length===0?`<div style="font-size:12px;color:#888">No assigned sessions.</div>`
-        :groups.map(g=>{const c=gc(g.cid);const range=fmtR(g.slots);
+        :groups.map(g=>{const c=gc2(g.cid);const range=fmtR(g.slots);
           return`<div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,.1)">
             <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(c?.name||'?')}</div><strong style="font-size:12px">${c?.name} - ${g.day} ${range}</strong></div>
             ${g.best.length===0?`<div style="font-size:11px;color:#D85A30">No pod members available</div>`
-              :g.best.slice(0,3).map((opt,i)=>{const st=gs(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best':i===1?'Good':'Available';
+              :g.best.slice(0,3).map((opt,i)=>{const st=gs2(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best':i===1?'Good':'Available';
                 return`<div class="co2"><div style="display:flex;align-items:center;gap:7px"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(st?.name||'?')}</div><div><div style="font-size:12px;font-weight:500">${st?.name}</div><div style="font-size:10px;color:#888">${opt.score} overlap</div></div></div>
                   <div style="display:flex;align-items:center;gap:6px"><span class="${tier}">${lbl}</span><button class="btn btn-p btn-sm" onclick="doRG('${g.cid}','${g.day}','${S.calloutStaff}','${opt.sid}')">Assign</button></div></div>`;}).join('')}
           </div>`;}).join('')}
@@ -384,7 +483,7 @@ function rData(){
     <div class="si2 ${S.edTab==='clients'?'sel':''}" onclick="setET('clients')">Clients & schedules</div>
     <div class="si2 ${S.edTab==='staff'?'sel':''}" onclick="setET('staff')">Staff & availability</div></div>
     <div class="ss"><div class="sl">How it works</div>
-      <div style="font-size:11px;color:#888;line-height:1.7">1. Click a day pill to select it (turns purple)<br>2. Click a time to start a range<br>3. Click another time to fill all 15-min slots in between<br>4. Click same time twice to toggle one slot</div></div>
+      <div style="font-size:11px;color:#888;line-height:1.7">1. Click a day pill to select it<br>2. Click a time to start a range<br>3. Click another time to fill all slots between<br>4. Click same time twice to toggle one slot</div></div>
     <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
   </div><div class="content">${S.edTab==='clients'?rEC():rES()}</div></div>`;
 }
@@ -392,7 +491,6 @@ function rEC(){
   let h=`<div class="card"><div class="ch"><div class="ct">Clients</div><button class="btn btn-p btn-sm" onclick="addC()">+ Add</button></div>`;
   S.clients.forEach(c=>{
     const exp=S.expEdit===c.id;
-    // KEY FIX: use selDaysC which persists regardless of slot count
     const selDays=S.selDaysC[c.id]||new Set();
     const activeDays=DAYS.filter(d=>selDays.has(d));
     const totalSlots=activeDays.reduce((n,d)=>n+(c.schedule[d]||[]).length,0);
@@ -406,10 +504,7 @@ function rEC(){
       </div>`;
     if(exp){
       h+=`<div class="exs"><h4>Select days</h4><div class="dr2">`;
-      DAYS.forEach(d=>{
-        const on=selDays.has(d);
-        h+=`<button class="dp${on?' on':''}" onclick="togCD('${c.id}','${d}')">${d}</button>`;
-      });
+      DAYS.forEach(d=>{const on=selDays.has(d);h+=`<button class="dp${on?' on':''}" onclick="togCD('${c.id}','${d}')">${d}</button>`;});
       h+=`</div>`;
       if(activeDays.length>0){
         h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time to fill</div>`:`<div class="it">Click a time to start a range, click another to fill all slots between.</div>`;
@@ -419,9 +514,7 @@ function rEC(){
           TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkCT('${c.id}','${d}','${t}')">${t}</button>`;});
           h+=`</div></div>`;
         });
-      } else {
-        h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;
-      }
+      } else {h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;}
       h+=`</div>`;
     }
     h+=`</div>`;
@@ -455,9 +548,7 @@ function rES(){
           TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkST('${s.id}','${d}','${t}')">${t}</button>`;});
           h+=`</div></div>`;
         });
-      } else {
-        h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;
-      }
+      } else {h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;}
       h+=`</div>`;
     }
     h+=`</div>`;
@@ -469,28 +560,100 @@ function rSave(){
   return`<div style="width:100%;flex-direction:column" class="content">
     <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">Save &amp; Load</h2>
     <div class="sp"><h3>Browser storage</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Saves in this browser between sessions.${hs?`<br><span style="color:#1D9E75">Last saved: ${sd}</span>`:''}${S.dirty?`<br><span style="color:#EF9F27">Unsaved changes</span>`:''}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Saves in this browser between sessions.${hs?`<br><span style="color:#1D9E75">Last saved: ${sd}</span>`:''}${S.dirty?`<br><span style="color:#EF9F27">Unsaved changes</span>`:''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-g" onclick="doSave()">Save now</button>${hs?`<button class="btn" onclick="ldStorage()">Reload saved</button>`:''}</div></div>
-    <div class="sp"><h3>Export to Excel / CSV</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Downloads a CSV file you can open directly in Excel or Google Sheets.</div>
-      <button class="btn btn-p" onclick="exportCSV()">Export to Excel/CSV</button></div>
     <div class="sp"><h3>Download JSON backup</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Full data backup. Restore it on any device or browser.</div>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Full data backup file. Restore it on any device or browser.</div>
       <button class="btn btn-p" onclick="exportJSON()">Download .json backup</button></div>
     <div class="sp"><h3>Load from JSON file</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Restore from a previously downloaded backup.</div>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Restore from a previously downloaded backup.</div>
       <button class="btn" onclick="importJSON()">Load from .json file</button></div>
-    <div class="sp" style="border-color:#F0997B"><h3>Reset to sample data</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Wipes everything. Cannot be undone.</div>
+    <div class="sp" style="border-color:#F0997B"><h3>Reset</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Wipes everything and restores sample data.</div>
       <button class="btn btn-d" onclick="resetData()">Reset to sample data</button></div>
   </div>`;
 }
+
+function rGSheets(){
+  const connected=GS.connected;
+  const lastSync=GS.lastSync?new Date(GS.lastSync).toLocaleString():'Never';
+  return`<div style="width:100%;flex-direction:column" class="content">
+    <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">&#x1F4CA; Google Sheets — Live Sync</h2>
+
+    ${connected?`
+    <div class="sp" style="border-color:#1D9E75">
+      <h3 style="color:#1D9E75">Connected &#10003;</h3>
+      <div style="font-size:12px;color:#555;margin-bottom:.75rem;line-height:1.6">
+        Every change you make in the app automatically syncs to your Google Sheet within a few seconds.<br>
+        Last sync: <strong>${lastSync}</strong>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem">
+        <button class="btn btn-gs" onclick="syncToSheets()">Sync now</button>
+        <button class="btn" onclick="disconnectGS()">Disconnect</button>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">Sync log</div>
+      <div class="sync-log" id="gs-log">${GS.log.join('<br>')||'No syncs yet'}</div>
+    </div>
+    `:`
+    <div class="gs-setup">
+      <h3>&#x1F527; Connect to Google Sheets</h3>
+      <p style="font-size:12px;color:#555;margin-bottom:1rem;line-height:1.6">Follow these steps once. After that, every change syncs automatically.</p>
+
+      <div class="gs-step">
+        <div class="gs-step-num">1</div>
+        <div class="gs-step-body">Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> and sign in with your Google account.</div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-step-num">2</div>
+        <div class="gs-step-body">Click <strong>Select a project</strong> at the top → <strong>New Project</strong> → name it <code>PodScheduler</code> → click <strong>Create</strong>.</div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-step-num">3</div>
+        <div class="gs-step-body">In the left menu go to <strong>APIs &amp; Services → Library</strong>. Search for <code>Google Sheets API</code>, click it, then click <strong>Enable</strong>.</div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-step-num">4</div>
+        <div class="gs-step-body">Go to <strong>APIs &amp; Services → Credentials</strong> → click <strong>Create Credentials → API key</strong>. Copy the key it gives you and paste it below.</div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-step-num">5</div>
+        <div class="gs-step-body">Still in Credentials: click <strong>Edit API key</strong> → under <strong>API restrictions</strong> choose <strong>Restrict key</strong> → select <strong>Google Sheets API</strong> → Save.</div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-step-num">6</div>
+        <div class="gs-step-body">Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → create a new blank spreadsheet → name it <code>PodScheduler</code>. Copy the ID from the URL — it's the long string between <code>/d/</code> and <code>/edit</code>. Example:<br><code style="word-break:break-all">https://docs.google.com/spreadsheets/d/<strong>1BxiM...your-id-here...AB7Gk</strong>/edit</code></div>
+      </div>
+      <div class="gs-step" style="border:none">
+        <div class="gs-step-num">7</div>
+        <div class="gs-step-body">
+          <strong>Important:</strong> In the spreadsheet click <strong>Share</strong> → add the email address shown in your Google Cloud console → give it <strong>Editor</strong> access. Also set the sheet to <strong>Anyone with the link can view</strong> so the API key can read it.
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.75rem">
+        <div class="field-row">
+          <label>API Key (from Step 4)</label>
+          <input type="password" id="gs-api-key" placeholder="AIza..." value="${GS.apiKey}" oninput="GS.apiKey=this.value">
+        </div>
+        <div class="field-row">
+          <label>Spreadsheet ID (from Step 6)</label>
+          <input type="text" id="gs-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" value="${GS.spreadsheetId}" oninput="GS.spreadsheetId=this.value">
+        </div>
+        <button class="btn btn-gs" style="align-self:flex-start" onclick="testConnection()">Connect &amp; test</button>
+      </div>
+
+      ${GS.log.length>0?`<div style="margin-top:.75rem"><div style="font-size:11px;color:#888;margin-bottom:4px">Log</div><div class="sync-log" id="gs-log">${GS.log.join('<br>')}</div></div>`:'<div id="gs-log" style="display:none"></div>'}
+    </div>
+    `}
+  </div>`;
+}
+
 function rSG(c){
   let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;
   DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});
   TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;
     DAYS.forEach(d=>{const sch=(c.schedule[d]||[]).includes(t);const asgn=gA(c.id,d,t);let cls='';if(asgn)cls='assigned';else if(sch)cls='sched';
-      h+=`<div class="sc ${cls||'empty'}" onclick="togCS('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' - '+gs(asgn)?.name:''}"></div>`;});});
+      h+=`<div class="sc ${cls||'empty'}" onclick="togCS('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' - '+gs2(asgn)?.name:''}"></div>`;});});
   return h+'</div>';
 }
 function rAG(s){
@@ -508,100 +671,73 @@ function selCO(id){S.calloutStaff=id;render();}
 function setET(t){S.edTab=t;S.expEdit=null;S.rStart=null;render();}
 function togExp(id){S.expEdit=S.expEdit===id?null:id;if(S.expEdit!==id)S.rStart=null;render();}
 function togPod(cid,sid){if(!S.pods[cid])S.pods[cid]=[];const i=S.pods[cid].indexOf(sid);if(i>=0)S.pods[cid].splice(i,1);else S.pods[cid].push(sid);markDirty();render();}
-function togCS(cid,day,slot){const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];const i=c.schedule[day].indexOf(slot);if(i>=0){c.schedule[day].splice(i,1);dA(cid,day,slot);}else{c.schedule[day].push(slot);const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}markDirty();render();}
-function togSS(sid,day,slot){const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];const i=s.availability[day].indexOf(slot);if(i>=0)s.availability[day].splice(i,1);else s.availability[day].push(slot);markDirty();render();}
-
-/* KEY FIX: toggleClientDay uses selDaysC, not schedule presence */
+function togCS(cid,day,slot){const c=gc2(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];const i=c.schedule[day].indexOf(slot);if(i>=0){c.schedule[day].splice(i,1);dA(cid,day,slot);}else{c.schedule[day].push(slot);const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}markDirty();render();}
+function togSS(sid,day,slot){const s=gs2(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];const i=s.availability[day].indexOf(slot);if(i>=0)s.availability[day].splice(i,1);else s.availability[day].push(slot);markDirty();render();}
 function togCD(cid,day){
-  const c=gc(cid);if(!c)return;
+  const c=gc2(cid);if(!c)return;
   if(!S.selDaysC[cid])S.selDaysC[cid]=new Set();
   const sel=S.selDaysC[cid];
-  if(sel.has(day)){
-    sel.delete(day);
-    delete c.schedule[day];
-  } else {
-    sel.add(day);
-    if(!c.schedule[day])c.schedule[day]=[];
-  }
+  if(sel.has(day)){sel.delete(day);delete c.schedule[day];}
+  else{sel.add(day);if(!c.schedule[day])c.schedule[day]=[];}
   if(S.rEid===cid){S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;}
   markDirty();render();
 }
 function togSD(sid,day){
-  const s=gs(sid);if(!s)return;
+  const s=gs2(sid);if(!s)return;
   if(!S.selDaysS[sid])S.selDaysS[sid]=new Set();
   const sel=S.selDaysS[sid];
-  if(sel.has(day)){
-    sel.delete(day);
-    delete s.availability[day];
-  } else {
-    sel.add(day);
-    if(!s.availability[day])s.availability[day]=[];
-  }
+  if(sel.has(day)){sel.delete(day);delete s.availability[day];}
+  else{sel.add(day);if(!s.availability[day])s.availability[day]=[];}
   if(S.rEid===sid){S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;}
   markDirty();render();
 }
-
 function clkCT(cid,day,time){
-  const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];
+  const c=gc2(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];
   if(S.rType==='client'&&S.rEid===cid&&S.rStart&&S.rDay===day){
     const lo=Math.min(t2m(S.rStart),t2m(time));const hi=Math.max(t2m(S.rStart),t2m(time));
     const inR=TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<=hi);const sel=new Set(c.schedule[day]);inR.forEach(t=>sel.add(t));c.schedule[day]=[...sel];
     S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
-  } else if(S.rType==='client'&&S.rEid===cid&&S.rStart===time&&S.rDay===day){
+  }else if(S.rType==='client'&&S.rEid===cid&&S.rStart===time&&S.rDay===day){
     const sel=new Set(c.schedule[day]);if(sel.has(time))sel.delete(time);else sel.add(time);c.schedule[day]=[...sel];
     S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
-  } else {S.rStart=time;S.rDay=day;S.rType='client';S.rEid=cid;render();}
+  }else{S.rStart=time;S.rDay=day;S.rType='client';S.rEid=cid;render();}
 }
 function clkST(sid,day,time){
-  const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];
+  const s=gs2(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];
   if(S.rType==='staff'&&S.rEid===sid&&S.rStart&&S.rDay===day){
     const lo=Math.min(t2m(S.rStart),t2m(time));const hi=Math.max(t2m(S.rStart),t2m(time));
     const inR=TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<=hi);const sel=new Set(s.availability[day]);inR.forEach(t=>sel.add(t));s.availability[day]=[...sel];
     S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
-  } else if(S.rType==='staff'&&S.rEid===sid&&S.rStart===time&&S.rDay===day){
+  }else if(S.rType==='staff'&&S.rEid===sid&&S.rStart===time&&S.rDay===day){
     const sel=new Set(s.availability[day]);if(sel.has(time))sel.delete(time);else sel.add(time);s.availability[day]=[...sel];
     S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
-  } else {S.rStart=time;S.rDay=day;S.rType='staff';S.rEid=sid;render();}
+  }else{S.rStart=time;S.rDay=day;S.rType='staff';S.rEid=sid;render();}
 }
-
-function saCD(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[...TIMES];markDirty();render();}
-function clrCD(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[];markDirty();render();}
-function saSD(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[...TIMES];markDirty();render();}
-function clrSD(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[];markDirty();render();}
-function rnC(id,val){if(val.trim()){const c=gc(id);if(c)c.name=val.trim();markDirty();render();}}
-function rnS(id,val){if(val.trim()){const s=gs(id);if(s)s.name=val.trim();markDirty();render();}}
+function saCD(cid,day){const c=gc2(cid);if(!c)return;c.schedule[day]=[...TIMES];markDirty();render();}
+function clrCD(cid,day){const c=gc2(cid);if(!c)return;c.schedule[day]=[];markDirty();render();}
+function saSD(sid,day){const s=gs2(sid);if(!s)return;s.availability[day]=[...TIMES];markDirty();render();}
+function clrSD(sid,day){const s=gs2(sid);if(!s)return;s.availability[day]=[];markDirty();render();}
+function rnC(id,val){if(val.trim()){const c=gc2(id);if(c)c.name=val.trim();markDirty();render();}}
+function rnS(id,val){if(val.trim()){const s=gs2(id);if(s)s.name=val.trim();markDirty();render();}}
 function mkCO(){const sel=document.getElementById('co-sel');if(!sel?.value)return;const sid=sel.value;if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
 function mkOut(sid){if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
 function rmCO(sid){S.calledOut=S.calledOut.filter(s=>s!==sid);render();}
 function goCallout2(cid){const co=S.calledOut[0];if(co)S.calloutStaff=co;go('callout');}
-function qA(cid,day){const c=gc(cid);if(!c)return;(c.schedule[day]||[]).forEach(slot=>{if(!gA(cid,day,slot)){const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}});markDirty();render();}
+function qA(cid,day){const c=gc2(cid);if(!c)return;(c.schedule[day]||[]).forEach(slot=>{if(!gA(cid,day,slot)){const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}});markDirty();render();}
 function doRG(cid,day,oldSid,newSid){
-  const c=gc(cid);if(!c)return;
+  const c=gc2(cid);if(!c)return;
   (c.schedule[day]||[]).forEach(slot=>{if(gA(cid,day,slot)===oldSid){sA(cid,day,slot,newSid);Object.entries(S.assignments).forEach(([oc,days])=>{if(oc===cid)return;if(days[day]&&days[day][slot]===newSid)delete days[day][slot];});}});
   markDirty();render();
 }
-function addC(){
-  const name=prompt('New client name:');if(!name?.trim())return;
-  const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});
-  S.pods[id]=[];S.selDaysC[id]=new Set();S.selClient=id;markDirty();render();
-}
-function addS(){
-  const name=prompt('New staff name:');if(!name?.trim())return;
-  const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});
-  S.selDaysS[id]=new Set();S.selStaff=id;markDirty();render();
-}
+function addC(){const name=prompt('New client name:');if(!name?.trim())return;const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});S.pods[id]=[];S.selDaysC[id]=new Set();S.selClient=id;markDirty();render();}
+function addS(){const name=prompt('New staff name:');if(!name?.trim())return;const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});S.selDaysS[id]=new Set();S.selStaff=id;markDirty();render();}
 function rmC(id){if(!confirm('Remove this client?'))return;S.clients=S.clients.filter(c=>c.id!==id);delete S.pods[id];delete S.assignments[id];delete S.selDaysC[id];S.selClient=S.clients[0]?.id||null;markDirty();render();}
-function rmS(id){
-  if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);
-  Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});
-  Object.values(S.assignments).forEach(days=>{Object.values(days).forEach(slots=>{Object.keys(slots).forEach(sl=>{if(slots[sl]===id)delete slots[sl];});});});
-  S.calledOut=S.calledOut.filter(s=>s!==id);delete S.selDaysS[id];S.selStaff=S.staff[0]?.id||null;markDirty();render();
-}
+function rmS(id){if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});Object.values(S.assignments).forEach(days=>{Object.values(days).forEach(slots=>{Object.keys(slots).forEach(sl=>{if(slots[sl]===id)delete slots[sl];});});});S.calledOut=S.calledOut.filter(s=>s!==id);delete S.selDaysS[id];S.selStaff=S.staff[0]?.id||null;markDirty();render();}
 function ldStorage(){const ok=tryLoad();if(ok){render();showToast('Loaded',false);}else showToast('No saved data',true);}
 
 function render(){
   const mc=document.getElementById('mc');if(!mc)return;
-  const block=['pods','data','save'];mc.style.display=block.includes(S.tab)?'block':'flex';
+  const block=['pods','data','save','gsheets'];mc.style.display=block.includes(S.tab)?'block':'flex';
   if(S.tab==='today')mc.innerHTML=rToday();
   else if(S.tab==='week')mc.innerHTML=rWeek();
   else if(S.tab==='clients')mc.innerHTML=rClients();
@@ -610,9 +746,13 @@ function render(){
   else if(S.tab==='callout')mc.innerHTML=rCallout();
   else if(S.tab==='data')mc.innerHTML=rData();
   else if(S.tab==='save')mc.innerHTML=rSave();
-  updSI();
+  else if(S.tab==='gsheets')mc.innerHTML=rGSheets();
+  updSI();updGSBadge();
 }
-tryLoad();render();
+
+loadGSConfig();
+tryLoad();
+render();
 </script>
 </body>
 </html>
