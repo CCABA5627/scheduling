@@ -13,14 +13,9 @@ body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; 
 .nav-tab { padding: 0 .75rem; height: 48px; display: flex; align-items: center; font-size: 12px; color: #666; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .nav-tab:hover { color: #111; }
 .nav-tab.active { color: #111; border-bottom-color: #534AB7; font-weight: 500; }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-left: 1rem; flex-shrink: 0; }
+.nav-right { margin-left: auto; padding-left: 1rem; flex-shrink: 0; }
 .si { font-size: 11px; color: #888; white-space: nowrap; }
 .si.saved { color: #1D9E75; } .si.unsaved { color: #EF9F27; }
-.gs-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
-.gs-badge.on { background: #E1F5EE; color: #085041; }
-.gs-badge.off { background: #f0f0ee; color: #888; }
-.gs-badge.syncing { background: #E6F1FB; color: #185FA5; }
-.gs-badge.err { background: #FAECE7; color: #993C1D; }
 .main { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 48px); }
 .sidebar { width: 230px; background: #fff; border-right: 0.5px solid rgba(0,0,0,.15); overflow-y: auto; flex-shrink: 0; }
 .content { flex: 1; overflow-y: auto; padding: 1.25rem; }
@@ -65,14 +60,13 @@ body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; 
 .mp { background: #F5C4B3; color: #4A1B0C; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
 .cob { background: #FAECE7; border: 0.5px solid #F0997B; border-radius: 10px; padding: 1rem; margin-bottom: .875rem; }
 .cot { font-size: 13px; font-weight: 500; color: #4A1B0C; margin-bottom: .5rem; }
-input[type=text], input[type=password], select { padding: 6px 9px; border: 0.5px solid rgba(0,0,0,.2); border-radius: 6px; font-size: 12px; background: #fff; color: #111; font-family: inherit; width: 100%; }
+input[type=text], select { padding: 6px 9px; border: 0.5px solid rgba(0,0,0,.2); border-radius: 6px; font-size: 12px; background: #fff; color: #111; font-family: inherit; width: 100%; }
 input:focus, select:focus { outline: none; border-color: #7F77DD; }
 .btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; border: 0.5px solid rgba(0,0,0,.2); background: #fff; color: #111; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .btn:hover { background: #eee; }
 .btn-p { background: #534AB7; color: #fff; border-color: #534AB7; } .btn-p:hover { background: #3C3489; }
 .btn-d { background: #D85A30; color: #fff; border-color: #D85A30; } .btn-d:hover { background: #993C1D; }
 .btn-g { background: #1D9E75; color: #fff; border-color: #1D9E75; } .btn-g:hover { background: #085041; }
-.btn-gs { background: #4285F4; color: #fff; border-color: #4285F4; } .btn-gs:hover { background: #2b6dd1; }
 .btn-sm { padding: 3px 8px; font-size: 11px; }
 .es { text-align: center; padding: 2.5rem 1rem; color: #888; }
 .lg { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
@@ -84,7 +78,7 @@ input:focus, select:focus { outline: none; border-color: #7F77DD; }
 .sx { overflow-x: auto; }
 .sp { background: #fff; border: 0.5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
 .sp h3 { font-size: 14px; font-weight: 500; margin-bottom: .75rem; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; max-width: 340px; line-height: 1.4; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; }
 .toast.err { background: #D85A30; }
 .exs { background: #f5f5f3; border-radius: 10px; padding: 1rem; margin-top: .625rem; }
 .exs h4 { font-size: 11px; font-weight: 500; color: #777; margin-bottom: .625rem; text-transform: uppercase; letter-spacing: .04em; }
@@ -104,17 +98,6 @@ input:focus, select:focus { outline: none; border-color: #7F77DD; }
 .hc.rp { background: #9FE1CB; border-color: #1D9E75; color: #04342C; }
 .rh { font-size: 11px; color: #0F6E56; background: #E1F5EE; border-radius: 6px; padding: 5px 10px; margin-top: 6px; }
 .it { font-size: 11px; color: #888; margin-top: 6px; font-style: italic; }
-/* GSheets panel */
-.step { display: flex; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid rgba(0,0,0,.07); }
-.step-n { width: 24px; height: 24px; border-radius: 50%; background: #4285F4; color: #fff; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-.step-b { font-size: 12px; line-height: 1.65; color: #333; flex: 1; }
-.step-b code { background: #f0f0ee; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: monospace; word-break: break-all; }
-.step-b strong { color: #111; }
-.step-b a { color: #4285F4; }
-.sync-log { background: #f5f5f3; border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #444; font-family: monospace; max-height: 90px; overflow-y: auto; margin-top: 8px; line-height: 1.7; }
-.field-row { display: flex; flex-direction: column; gap: 5px; margin-top: .75rem; }
-.field-row label { font-size: 11px; font-weight: 500; color: #555; }
-.connected-box { background: #E1F5EE; border: 1.5px solid #1D9E75; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
 </style>
 </head>
 <body>
@@ -129,11 +112,7 @@ input:focus, select:focus { outline: none; border-color: #7F77DD; }
     <div class="nav-tab" data-tab="callout" onclick="go('callout')">Callout</div>
     <div class="nav-tab" data-tab="data" onclick="go('data')">Edit Data</div>
     <div class="nav-tab" data-tab="save" onclick="go('save')">Save/Load</div>
-    <div class="nav-tab" data-tab="gsheets" onclick="go('gsheets')">&#x1F4CA; Google Sheets</div>
-    <div class="nav-right">
-      <span id="gs-badge" class="gs-badge off">Sheets off</span>
-      <span class="si" id="si">Not saved</span>
-    </div>
+    <div class="nav-right"><span class="si" id="si">Not saved</span></div>
   </div>
   <div class="main" id="mc"></div>
 </div>
@@ -145,7 +124,6 @@ function bT(){const o=[];for(let h=8;h<=17;h++){for(let m=0;m<60;m+=15){if(h===1
 const TIMES=bT();
 function t2m(t){const[ti,ap]=t.split(' ');const[h,m]=ti.split(':').map(Number);let hr=h;if(ap==='PM'&&h!==12)hr=h+12;if(ap==='AM'&&h===12)hr=0;return hr*60+m;}
 const SK='podscheduler_v3';
-const GS_SK='podscheduler_gas_url';
 
 const DD={
   clients:[
@@ -180,95 +158,19 @@ let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1
 S.selDaysC=initSD(S.clients);
 S.selDaysS=initSDS(S.staff);
 
-// ---- Google Apps Script sync ----
-let GAS={url:'',connected:false,syncing:false,lastSync:null,log:[]};
-
-function loadGASUrl(){try{const r=localStorage.getItem(GS_SK);if(r){GAS.url=r;GAS.connected=!!r;updBadge();}}catch(e){}}
-function saveGASUrl(){try{localStorage.setItem(GS_SK,GAS.url);}catch(e){}}
-function gasLog(msg,ok=true){const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});GAS.log.unshift(`${t} ${ok?'✓':'✗'} ${msg}`);if(GAS.log.length>15)GAS.log=GAS.log.slice(0,15);const el=document.getElementById('gs-log');if(el)el.innerHTML=GAS.log.join('<br>');}
-function updBadge(){const el=document.getElementById('gs-badge');if(!el)return;if(GAS.syncing){el.className='gs-badge syncing';el.textContent='Syncing...';}else if(GAS.connected&&GAS.lastSync){el.className='gs-badge on';el.textContent='Sheets ✓ '+new Date(GAS.lastSync).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else if(GAS.connected){el.className='gs-badge on';el.textContent='Sheets connected';}else{el.className='gs-badge off';el.textContent='Sheets off';}}
-
-function buildWeekly(){
-  const rows=[['Client','Day','Start','End','Assigned Staff','In Pod?','Slots','Status']];
-  S.clients.forEach(c=>{DAYS.forEach(d=>{
-    const slots=(c.schedule[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!slots.length)return;
-    const groups=[];let cur=null;
-    slots.forEach(t=>{const sid=S.assignments[c.id]?.[d]?.[t];if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,n:1};groups.push(cur);}else{cur.to=t;cur.n++;}});
-    groups.forEach(g=>{const sn=g.sid?(gsN(g.sid)?.name||'?'):'UNASSIGNED';const ip=g.sid?(S.pods[c.id]||[]).includes(g.sid)?'Yes':'No':'-';rows.push([c.name,d,g.from,g.to,sn,ip,g.n,g.sid?'Covered':'NEEDS COVERAGE']);});
-  });});return rows;
+function tryLoad(){
+  try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);updSI();return true;}}catch(e){}return false;
 }
-function buildPods(){
-  const rows=[['Client','Staff 1','Staff 2','Staff 3','Staff 4','Staff 5','Staff 6','Staff 7','Pod Size','Health']];
-  S.clients.forEach(c=>{const pod=(S.pods[c.id]||[]).map(sid=>gsN(sid)?.name||sid);const sz=pod.length;rows.push([c.name,...pod,...Array(Math.max(0,7-pod.length)).fill(''),sz,sz>=4&&sz<=7?'Good':'Check size']);});return rows;
+function doSave(){
+  try{const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved',false);}
+  catch(e){showToast('Save failed',true);}
 }
-function buildStaff(){
-  const rows=[['Staff','Day','From','To','Total Slots','Hours','Client Pods']];
-  S.staff.forEach(s=>{const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(s.id)).map(([cid])=>gcN(cid)?.name||cid);DAYS.forEach(d=>{const sl=(s.availability[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!sl.length)return;rows.push([s.name,d,sl[0],sl[sl.length-1],sl.length,(sl.length*15/60).toFixed(2),myC.join(', ')]);});});return rows;
-}
-function buildCallout(){
-  const rows=[['If this staff calls out','Client','Day','Time slot','Pod backup options','# Slots']];
-  S.staff.forEach(s=>{
-    const asgnd=[];Object.entries(S.assignments).forEach(([cid,days])=>{Object.entries(days).forEach(([day,slots])=>{Object.entries(slots).forEach(([slot,sid])=>{if(sid===s.id)asgnd.push({cid,day,slot});});});});
-    const grouped={};asgnd.forEach(a=>{const k=a.cid+'_'+a.day;if(!grouped[k])grouped[k]={cid:a.cid,day:a.day,slots:[]};grouped[k].slots.push(a.slot);});
-    Object.values(grouped).forEach(g=>{
-      const c=gcN(g.cid);const sl=g.slots.slice().sort((a,b)=>t2m(a)-t2m(b));
-      const range=sl.length>1?sl[0]+' - '+sl[sl.length-1]:sl[0];
-      const pod=S.pods[g.cid]||[];
-      const backups=pod.filter(pid=>pid!==s.id).map(pid=>{const st=gsN(pid);if(!st)return null;let ov=0;(gcN(g.cid)?.schedule[g.day]||[]).forEach(t=>{if((st.availability[g.day]||[]).includes(t))ov++;});return{name:st.name,ov};}).filter(Boolean).sort((a,b)=>b.ov-a.ov);
-      rows.push([s.name,c?.name||'?',g.day,range,backups.length?backups.slice(0,3).map(b=>`${b.name}(${b.ov})`).join(' | '):'No backup',g.slots.length]);
-    });
-  });return rows;
-}
-
-let syncTimer=null;
-function scheduleSyncToSheets(){
-  if(!GAS.connected)return;
-  if(syncTimer)clearTimeout(syncTimer);
-  syncTimer=setTimeout(syncNow,2500);
-}
-async function syncNow(){
-  if(!GAS.connected||!GAS.url)return;
-  GAS.syncing=true;updBadge();
-  try{
-    const payload={allSheets:{weekly:buildWeekly(),pods:buildPods(),staff:buildStaff(),callout:buildCallout()}};
-    const res=await fetch(GAS.url,{method:'POST',body:JSON.stringify(payload)});
-    const json=await res.json();
-    if(json.status==='ok'){GAS.lastSync=new Date().toISOString();gasLog('All 4 sheets synced');showToast('Synced to Google Sheets ✓',false);}
-    else{gasLog('Error: '+(json.message||'unknown'),false);showToast('Sync error: '+json.message,true);}
-  }catch(e){gasLog('Failed: '+e.message,false);showToast('Sync failed: '+e.message,true);}
-  GAS.syncing=false;updBadge();
-}
-async function testGAS(){
-  const urlEl=document.getElementById('gas-url');if(!urlEl)return;
-  const url=urlEl.value.trim();if(!url){showToast('Paste your Web App URL first',true);return;}
-  GAS.syncing=true;updBadge();
-  try{
-    const res=await fetch(url);const json=await res.json();
-    if(json.status==='ok'){
-      GAS.url=url;GAS.connected=true;saveGASUrl();
-      gasLog('Connected successfully');showToast('Connected! Syncing now...',false);
-      await syncNow();render();
-    }else{gasLog('Test failed: '+(json.message||'bad response'),false);showToast('Connection test failed',true);}
-  }catch(e){
-    // CORS on GET is expected with Apps Script — try posting instead
-    try{
-      GAS.url=url;GAS.connected=true;saveGASUrl();
-      gasLog('Connection assumed OK — syncing');await syncNow();render();
-    }catch(e2){gasLog('Failed: '+e2.message,false);showToast('Connection failed: '+e2.message,true);}
-  }
-  GAS.syncing=false;updBadge();
-}
-function disconnectGAS(){GAS.url='';GAS.connected=false;GAS.lastSync=null;try{localStorage.removeItem(GS_SK);}catch(e){}updBadge();render();showToast('Disconnected',false);}
-
-// ---- Local save ----
-function tryLoad(){try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);updSI();return true;}}catch(e){}return false;}
-function doSave(){try{const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved locally',false);}catch(e){showToast('Save failed',true);}}
-function markDirty(){S.dirty=true;updSI();scheduleSyncToSheets();}
-function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Unsaved';}else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved';}}
-function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
-function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);showToast('Downloaded backup',false);}
+function markDirty(){S.dirty=true;updSI();}
+function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Unsaved changes';}else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved yet';}}
+function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
+function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);showToast('Backup downloaded',false);}
 function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.assignments=p.assignments||{};S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
-function resetData(){if(!confirm('Reset to sample data?'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset',false);}
+function resetData(){if(!confirm('Reset to sample data? All your changes will be lost.'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysC=initSD(S.clients);S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset to sample data',false);}
 
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function gcN(id){return S.clients.find(c=>c.id===id);}
@@ -282,7 +184,6 @@ function todayDay(){const d=ALL_DAYS[new Date().getDay()];return DAYS.includes(d
 function go(t){S.tab=t;S.rStart=null;document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));render();}
 function fmtR(slots){if(!slots||!slots.length)return'';const s=[...slots].sort((a,b)=>t2m(a)-t2m(b));return s[0]+(s.length>1?' - '+s[s.length-1]:'');}
 
-/* ===== RENDERS ===== */
 function rToday(){
   const today=todayDay();const slots=[];
   S.clients.forEach(c=>{const ds=(c.schedule[today]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=gA(c.id,today,t);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid};groups.push(cur);}else cur.to=t;});groups.forEach(g=>slots.push({client:c,from:g.from,to:g.to,sid:g.sid}));});
@@ -290,23 +191,22 @@ function rToday(){
   const banner=S.calledOut.length>0?`<div class="cob"><div class="cot">Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gsN(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span onclick="rmCO('${sid}')" style="cursor:pointer">x</span></span>`;}).join('')}</div></div>`:'';
   const cov=slots.filter(s=>s.sid&&!S.calledOut.includes(s.sid)).length;
   const unc=slots.filter(s=>!s.sid||S.calledOut.includes(s.sid)).length;
-  const sh=slots.length===0?`<div class="es">No sessions for ${today}</div>`
+  const sh=slots.length===0?`<div class="es">No sessions scheduled for ${today}</div>`
     :slots.map(sl=>{const co=sl.sid&&S.calledOut.includes(sl.sid);const bdr=co?'border-color:#F0997B;background:#FAECE7':'';
       const chip=sl.sid?(co?`<span class="cc">&#9888; ${gsN(sl.sid)?.name} (out)</span>`:`<span class="sc2">${gsN(sl.sid)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
       const btn=co?`<button class="btn btn-p btn-sm" onclick="goCO2('${sl.client.id}')">Find cover</button>`:`<button class="btn btn-sm" onclick="qA('${sl.client.id}','${today}')">Reassign</button>`;
       return`<div class="ts" style="${bdr}"><div style="font-size:11px;color:#666;min-width:110px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="av av-c">${ini(sl.client.name)}</div><div style="font-size:12px;font-weight:500;flex:1">${sl.client.name}</div>${chip}${btn}</div>`;}).join('');
-  const gsBtn=GAS.connected
-    ?`<button class="btn btn-gs" style="width:100%;margin-top:5px" onclick="syncNow()">Sync to Sheets now</button>`
-    :`<button class="btn" style="width:100%;margin-top:5px;font-size:11px;color:#4285F4;border-color:#4285F4" onclick="go('gsheets')">Connect Google Sheets &#8594;</button>`;
-  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Quick callout</div>
-    <select id="co-sel" style="margin-bottom:6px"><option value="">Select staff...</option>${S.staff.map(s=>`<option value="${s.id}"${S.calledOut.includes(s.id)?' disabled':''}>${s.name}${S.calledOut.includes(s.id)?' (out)':''}</option>`).join('')}</select>
-    <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button></div>
-    <div class="ss"><div class="sl">Today - ${today}</div>
+  return`<div style="width:100%"><div class="sidebar">
+    <div class="ss"><div class="sl">Quick callout</div>
+      <select id="co-sel" style="margin-bottom:6px"><option value="">Select staff...</option>${S.staff.map(s=>`<option value="${s.id}"${S.calledOut.includes(s.id)?' disabled':''}>${s.name}${S.calledOut.includes(s.id)?' (out)':''}</option>`).join('')}</select>
+      <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button></div>
+    <div class="ss"><div class="sl">Today — ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
       <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div></div>
-    <div class="ss"><button class="btn btn-g" style="width:100%;margin-bottom:5px" onclick="doSave()">Save locally</button>${gsBtn}</div>
-  </div><div class="content">${banner}<div class="card"><div class="ch"><div class="ct">Today's Sessions - ${today}</div></div>${sh}</div></div></div>`;
+    <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
+  </div><div class="content">${banner}<div class="card"><div class="ch"><div class="ct">Today's Sessions — ${today}</div></div>${sh}</div></div></div>`;
 }
+
 function rWeek(){
   const byDay={};DAYS.forEach(d=>byDay[d]=[]);
   S.clients.forEach(c=>{DAYS.forEach(d=>{const ds=(c.schedule[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=gA(c.id,d,t);const co=sid&&S.calledOut.includes(sid);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,co};groups.push(cur);}else cur.to=t;});groups.forEach(g=>byDay[d].push({client:c,from:g.from,to:g.to,sid:g.sid,co:g.co}));});});
@@ -318,12 +218,21 @@ function rWeek(){
       :ss2.map(sl=>{const cls=sl.co?'wco':sl.sid?'wa':'wu';const sname=sl.sid?(sl.co?`&#9888; ${gsN(sl.sid)?.name} (out)`:gsN(sl.sid)?.name):'Needs coverage';
         return`<div class="wsl"><div style="font-size:10px;color:#888;margin-bottom:3px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="wse ${cls}"><div class="av av-c" style="width:18px;height:18px;font-size:7px">${ini(sl.client.name)}</div><div><div style="font-size:10px;font-weight:500">${sl.client.name}</div><div style="font-size:9px;opacity:.8">${sname}</div></div></div></div>`;}).join('');
     return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}">${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''} <span style="font-size:9px;color:#888">${ss2.length}</span></div>${inner}</div>`;}).join('');
-  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Week</div>
-    <div style="background:#E6F1FB;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#042C53">Total</div><div style="font-size:20px;font-weight:500;color:#042C53">${total}</div></div>
-    <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
-    <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${total-cov}</div></div></div>
-  </div><div class="content"><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:550px">${cols}</div></div></div></div>`;
+  return`<div style="width:100%"><div class="sidebar">
+    <div class="ss"><div class="sl">This week</div>
+      <div style="background:#E6F1FB;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#042C53">Total sessions</div><div style="font-size:20px;font-weight:500;color:#042C53">${total}</div></div>
+      <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
+      <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${total-cov}</div></div></div>
+  </div><div class="content">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;font-size:10px;color:#777">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Covered</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #F0997B;display:inline-block"></span>Needs coverage</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#F5C4B3;display:inline-block"></span>Called out</span>
+    </div>
+    <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:550px">${cols}</div></div>
+  </div></div>`;
 }
+
 function rClients(){
   const c=gcN(S.selClient);const pods=S.pods[S.selClient]||[];
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Clients (${S.clients.length})</div>
@@ -334,11 +243,12 @@ function rClients(){
       <div class="lg"><div class="li"><div class="ld" style="background:#9FE1CB"></div>Assigned</div><div class="li"><div class="ld" style="background:#E1F5EE"></div>Scheduled</div></div>
       <div class="sx">${rSG(c)}</div></div>
     <div class="card"><div class="ch"><div class="ct">Pod members</div><span style="font-size:11px;color:#888">${pods.length} staff</span></div>
-      <p style="font-size:11px;color:#888;margin-bottom:.5rem">Click to add/remove (4-7 recommended)</p>
-      <div class="pg">${S.staff.map(s=>{const inp=pods.includes(s.id);const sc=overlap(s.id,c.id);return`<div class="pm ${inp?'ip':''}" onclick="togPod('${c.id}','${s.id}')"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(s.name)}</div><div><div style="font-size:11px;font-weight:500">${s.name}</div><div style="font-size:10px;color:#888">${sc}</div></div>${inp?'<span style="color:#185FA5;margin-left:auto">&#10003;</span>':''}</div>`;}).join('')}</div>
+      <p style="font-size:11px;color:#888;margin-bottom:.5rem">Click to add/remove (4–7 recommended)</p>
+      <div class="pg">${S.staff.map(s=>{const inp=pods.includes(s.id);const sc=overlap(s.id,c.id);return`<div class="pm ${inp?'ip':''}" onclick="togPod('${c.id}','${s.id}')"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(s.name)}</div><div><div style="font-size:11px;font-weight:500">${s.name}</div><div style="font-size:10px;color:#888">${sc} overlap</div></div>${inp?'<span style="color:#185FA5;margin-left:auto">&#10003;</span>':''}</div>`;}).join('')}</div>
     </div>
   `:'<div class="es">Select a client</div>'}</div></div>`;
 }
+
 function rStaff(){
   const s=gsN(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Staff (${S.staff.length})</div>
@@ -350,10 +260,11 @@ function rStaff(){
       <div class="sx">${rAG(s)}</div></div>
     <div class="card"><div class="ch"><div class="ct">Client pods</div></div>
       ${myC.length===0?`<div style="font-size:12px;color:#888">Not in any pods yet</div>`
-        :myC.map(([cid])=>{const cl=gcN(cid);if(!cl)return'';return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${overlap(s.id,cid)}</span></div>`;}).join('')}
+        :myC.map(([cid])=>{const cl=gcN(cid);if(!cl)return'';return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${overlap(s.id,cid)} overlap</span></div>`;}).join('')}
     </div>
   `:'<div class="es">Select a staff member</div>'}</div></div>`;
 }
+
 function rPods(){
   return`<div style="width:100%;flex-direction:column" class="content"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem">All pods overview</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.875rem">
@@ -363,6 +274,7 @@ function rPods(){
       </div>`;}).join('')}
     </div></div>`;
 }
+
 function rCallout(){
   const aff=[];
   if(S.calloutStaff){Object.entries(S.assignments).forEach(([cid,days])=>{Object.entries(days).forEach(([day,slots])=>{Object.entries(slots).forEach(([slot,sid])=>{if(sid===S.calloutStaff){const best=bestFor(cid,day,slot,S.calloutStaff);aff.push({cid,day,slot,best});}});});});}
@@ -370,39 +282,43 @@ function rCallout(){
   const groups=Object.values(grouped);
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Select staff</div>
     ${S.staff.map(s=>{const out=S.calledOut.includes(s.id);return`<div class="si2 ${S.calloutStaff===s.id?'sel':''}" onclick="selCO('${s.id}')"><div class="av av-s">${ini(s.name)}</div><span class="nm">${s.name}</span>${out?'<span class="bx" style="background:#F5C4B3;color:#4A1B0C">Out</span>':''}</div>`;}).join('')}
-  </div></div><div class="content">${!S.calloutStaff?`<div class="es">Select a staff member to see coverage</div>`:`
-    <div class="cob"><div class="cot">&#9888; Coverage: ${gsN(S.calloutStaff)?.name}</div>
-      <div style="display:flex;gap:6px">${S.calledOut.includes(S.calloutStaff)?`<button class="btn btn-sm" onclick="rmCO('${S.calloutStaff}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="mkOut('${S.calloutStaff}')">Mark called out</button>`}</div></div>
-    <div class="card"><div class="ch"><div class="ct">Affected sessions</div></div>
-      ${groups.length===0?`<div style="font-size:12px;color:#888">No assigned sessions.</div>`
+  </div></div><div class="content">${!S.calloutStaff?`<div class="es">Select a staff member to see coverage options</div>`:`
+    <div class="cob"><div class="cot">&#9888; Coverage needed: ${gsN(S.calloutStaff)?.name}</div>
+      <div style="display:flex;gap:6px">${S.calledOut.includes(S.calloutStaff)?`<button class="btn btn-sm" onclick="rmCO('${S.calloutStaff}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="mkOut('${S.calloutStaff}')">Mark called out today</button>`}</div></div>
+    <div class="card"><div class="ch"><div class="ct">Affected sessions & coverage</div></div>
+      ${groups.length===0?`<div style="font-size:12px;color:#888">No assigned sessions found.</div>`
         :groups.map(g=>{const c=gcN(g.cid);const range=fmtR(g.slots);
-          return`<div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(c?.name||'?')}</div><strong style="font-size:12px">${c?.name} - ${g.day} ${range}</strong></div>
-            ${g.best.length===0?`<div style="font-size:11px;color:#D85A30">No pod members available</div>`
-              :g.best.slice(0,3).map((opt,i)=>{const st=gsN(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best':i===1?'Good':'Available';
-                return`<div class="co2"><div style="display:flex;align-items:center;gap:7px"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(st?.name||'?')}</div><div><div style="font-size:12px;font-weight:500">${st?.name}</div><div style="font-size:10px;color:#888">${opt.score} overlap</div></div></div>
+          return`<div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(c?.name||'?')}</div><strong style="font-size:12px">${c?.name} — ${g.day} ${range}</strong></div>
+            ${g.best.length===0?`<div style="font-size:11px;color:#D85A30">No pod members available for this slot</div>`
+              :g.best.slice(0,3).map((opt,i)=>{const st=gsN(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best match':i===1?'Good':'Available';
+                return`<div class="co2"><div style="display:flex;align-items:center;gap:7px"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(st?.name||'?')}</div><div><div style="font-size:12px;font-weight:500">${st?.name}</div><div style="font-size:10px;color:#888">${opt.score} overlap slots</div></div></div>
                   <div style="display:flex;align-items:center;gap:6px"><span class="${tier}">${lbl}</span><button class="btn btn-p btn-sm" onclick="doRG('${g.cid}','${g.day}','${S.calloutStaff}','${opt.sid}')">Assign</button></div></div>`;}).join('')}
           </div>`;}).join('')}
     </div>
   `}</div></div>`;
 }
+
 function rData(){
-  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">What to edit</div>
-    <div class="si2 ${S.edTab==='clients'?'sel':''}" onclick="setET('clients')">Clients & schedules</div>
-    <div class="si2 ${S.edTab==='staff'?'sel':''}" onclick="setET('staff')">Staff & availability</div></div>
-    <div class="ss"><div class="sl">How it works</div><div style="font-size:11px;color:#888;line-height:1.7">1. Click a day pill to select it<br>2. Click a time to start a range<br>3. Click another time to fill all slots between<br>4. Click same slot twice to toggle</div></div>
+  return`<div style="width:100%"><div class="sidebar">
+    <div class="ss"><div class="sl">What to edit</div>
+      <div class="si2 ${S.edTab==='clients'?'sel':''}" onclick="setET('clients')">Clients &amp; schedules</div>
+      <div class="si2 ${S.edTab==='staff'?'sel':''}" onclick="setET('staff')">Staff &amp; availability</div></div>
+    <div class="ss"><div class="sl">How it works</div>
+      <div style="font-size:11px;color:#888;line-height:1.7">1. Click a day pill to select it<br>2. Click a time to start a range<br>3. Click another time to fill all 15-min slots between<br>4. Click the same slot twice to toggle one slot</div></div>
     <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
   </div><div class="content">${S.edTab==='clients'?rEC():rES()}</div></div>`;
 }
+
 function rEC(){
-  let h=`<div class="card"><div class="ch"><div class="ct">Clients</div><button class="btn btn-p btn-sm" onclick="addC()">+ Add</button></div>`;
+  let h=`<div class="card"><div class="ch"><div class="ct">Clients</div><button class="btn btn-p btn-sm" onclick="addC()">+ Add client</button></div>`;
   S.clients.forEach(c=>{
     const exp=S.expEdit===c.id;const selDays=S.selDaysC[c.id]||new Set();const activeDays=DAYS.filter(d=>selDays.has(d));const totalSlots=activeDays.reduce((n,d)=>n+(c.schedule[d]||[]).length,0);const isR=S.rType==='client'&&S.rEid===c.id;
     h+=`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0"><div style="display:flex;align-items:center;gap:8px"><input class="ie" value="${c.name}" onblur="rnC('${c.id}',this.value)"><span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} &middot; ${totalSlots} slots</span><button class="btn btn-sm" onclick="togExp('${c.id}')">${exp?'Hide':'Edit schedule'}</button><button class="btn btn-d btn-sm" onclick="rmC('${c.id}')">Del</button></div>`;
     if(exp){
       h+=`<div class="exs"><h4>Select days</h4><div class="dr2">`;DAYS.forEach(d=>{const on=selDays.has(d);h+=`<button class="dp${on?' on':''}" onclick="togCD('${c.id}','${d}')">${d}</button>`;});h+=`</div>`;
       if(activeDays.length>0){
-        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time</div>`:`<div class="it">Click a time to start a range, click another to fill all slots between.</div>`;
-        activeDays.forEach(d=>{const sel=new Set(c.schedule[d]||[]);const allOn=TIMES.every(t=>sel.has(t));h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots</span><span class="slnk" onclick="${allOn?`clrCD('${c.id}','${d}')`:` saCD('${c.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkCT('${c.id}','${d}','${t}')">${t}</button>`;});h+=`</div></div>`;});
+        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time to fill all slots between</div>`:`<div class="it">Click a time to start a range, click another to fill all 15-min slots between them.</div>`;
+        activeDays.forEach(d=>{const sel=new Set(c.schedule[d]||[]);const allOn=TIMES.every(t=>sel.has(t));h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots selected</span><span class="slnk" onclick="${allOn?`clrCD('${c.id}','${d}')`:` saCD('${c.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkCT('${c.id}','${d}','${t}')">${t}</button>`;});h+=`</div></div>`;});
       }else{h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;}
       h+=`</div>`;
     }
@@ -410,16 +326,17 @@ function rEC(){
   });
   return h+'</div>';
 }
+
 function rES(){
-  let h=`<div class="card"><div class="ch"><div class="ct">Staff</div><button class="btn btn-p btn-sm" onclick="addS()">+ Add</button></div>`;
+  let h=`<div class="card"><div class="ch"><div class="ct">Staff</div><button class="btn btn-p btn-sm" onclick="addS()">+ Add staff</button></div>`;
   S.staff.forEach(s=>{
     const exp=S.expEdit===s.id;const selDays=S.selDaysS[s.id]||new Set();const activeDays=DAYS.filter(d=>selDays.has(d));const totalSlots=activeDays.reduce((n,d)=>n+(s.availability[d]||[]).length,0);const isR=S.rType==='staff'&&S.rEid===s.id;
     h+=`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0"><div style="display:flex;align-items:center;gap:8px"><input class="ie" value="${s.name}" onblur="rnS('${s.id}',this.value)"><span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} &middot; ${totalSlots} slots</span><button class="btn btn-sm" onclick="togExp('${s.id}')">${exp?'Hide':'Edit availability'}</button><button class="btn btn-d btn-sm" onclick="rmS('${s.id}')">Del</button></div>`;
     if(exp){
       h+=`<div class="exs"><h4>Select days</h4><div class="dr2">`;DAYS.forEach(d=>{const on=selDays.has(d);h+=`<button class="dp${on?' on':''}" onclick="togSD('${s.id}','${d}')">${d}</button>`;});h+=`</div>`;
       if(activeDays.length>0){
-        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time</div>`:`<div class="it">Click a time to start a range, click another to fill all slots between.</div>`;
-        activeDays.forEach(d=>{const sel=new Set(s.availability[d]||[]);const allOn=TIMES.every(t=>sel.has(t));h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots</span><span class="slnk" onclick="${allOn?`clrSD('${s.id}','${d}')`:` saSD('${s.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkST('${s.id}','${d}','${t}')">${t}</button>`;});h+=`</div></div>`;});
+        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time to fill all slots between</div>`:`<div class="it">Click a time to start a range, click another to fill all 15-min slots between them.</div>`;
+        activeDays.forEach(d=>{const sel=new Set(s.availability[d]||[]);const allOn=TIMES.every(t=>sel.has(t));h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots selected</span><span class="slnk" onclick="${allOn?`clrSD('${s.id}','${d}')`:` saSD('${s.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkST('${s.id}','${d}','${t}')">${t}</button>`;});h+=`</div></div>`;});
       }else{h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;}
       h+=`</div>`;
     }
@@ -427,78 +344,34 @@ function rES(){
   });
   return h+'</div>';
 }
+
 function rSave(){
   const hs=!!S.lastSaved;const sd=S.lastSaved?new Date(S.lastSaved).toLocaleString():null;
   return`<div style="width:100%;flex-direction:column" class="content">
     <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">Save &amp; Load</h2>
-    <div class="sp"><h3>Browser storage</h3><div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Saves in this browser.${hs?`<br><span style="color:#1D9E75">Last saved: ${sd}</span>`:''}${S.dirty?`<br><span style="color:#EF9F27">Unsaved changes</span>`:''}</div><div style="display:flex;gap:8px"><button class="btn btn-g" onclick="doSave()">Save now</button>${hs?`<button class="btn" onclick="ldSt()">Reload saved</button>`:''}</div></div>
-    <div class="sp"><h3>Download JSON backup</h3><div style="font-size:12px;color:#888;margin-bottom:.75rem">Full backup. Restore on any device.</div><button class="btn btn-p" onclick="exportJSON()">Download .json backup</button></div>
-    <div class="sp"><h3>Load from JSON file</h3><div style="font-size:12px;color:#888;margin-bottom:.75rem">Restore from a backup file.</div><button class="btn" onclick="importJSON()">Load from .json file</button></div>
-    <div class="sp" style="border-color:#F0997B"><h3>Reset</h3><div style="font-size:12px;color:#888;margin-bottom:.75rem">Wipes everything.</div><button class="btn btn-d" onclick="resetData()">Reset to sample data</button></div>
+    <div class="sp"><h3>Browser storage</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Saves your data in this browser. Persists between sessions as long as you use the same browser and don't clear your cache.${hs?`<br><span style="color:#1D9E75">Last saved: ${sd}</span>`:''}${S.dirty?`<br><span style="color:#EF9F27">You have unsaved changes</span>`:''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-g" onclick="doSave()">Save now</button>${hs?`<button class="btn" onclick="ldSt()">Reload saved data</button>`:''}</div></div>
+    <div class="sp"><h3>Download backup file</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Downloads a <code style="background:#f0f0ee;padding:1px 4px;border-radius:3px;font-size:11px">.json</code> file to your computer. Save it to Google Drive or your desktop. Use it to restore your data or move it to another device.</div>
+      <button class="btn btn-p" onclick="exportJSON()">Download .json backup</button></div>
+    <div class="sp"><h3>Load from backup file</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Restore from a previously downloaded backup. This will replace your current data.</div>
+      <button class="btn" onclick="importJSON()">Load from .json file</button></div>
+    <div class="sp" style="border-color:#F0997B"><h3>Reset to sample data</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.75rem;line-height:1.6">Wipes everything and restores the original sample clients and staff. Cannot be undone unless you have a backup file.</div>
+      <button class="btn btn-d" onclick="resetData()">Reset to sample data</button></div>
   </div>`;
 }
 
-function rGSheets(){
-  if(GAS.connected){
-    return`<div style="width:100%;flex-direction:column" class="content">
-      <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">&#x1F4CA; Google Sheets — Live Sync</h2>
-      <div class="connected-box">
-        <div style="font-size:14px;font-weight:500;color:#085041;margin-bottom:.5rem">&#10003; Connected and syncing automatically</div>
-        <div style="font-size:12px;color:#444;margin-bottom:.875rem;line-height:1.6">Every change you make syncs to your Google Sheet within 2-3 seconds.<br>Last sync: <strong>${GAS.lastSync?new Date(GAS.lastSync).toLocaleString():'Not yet'}</strong></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-gs" onclick="syncNow()">Sync now</button>
-          <button class="btn btn-d" onclick="disconnectGAS()">Disconnect</button>
-        </div>
-      </div>
-      <div class="sp"><h3>Sync log</h3><div class="sync-log" id="gs-log">${GAS.log.join('<br>')||'No syncs yet'}</div></div>
-    </div>`;
-  }
-
-  return`<div style="width:100%;flex-direction:column" class="content">
-    <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">&#x1F4CA; Connect to Google Sheets</h2>
-
-    <div class="sp" style="border-color:#4285F4">
-      <h3 style="color:#4285F4">Setup — takes about 5 minutes, done once</h3>
-      <p style="font-size:12px;color:#555;margin-bottom:1rem;line-height:1.6">This uses <strong>Google Apps Script</strong> — a free script that lives inside your Google Sheet and receives data from the app. No OAuth, no account linking.</p>
-
-      <div class="step">
-        <div class="step-n">1</div>
-        <div class="step-b">Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> and create a new blank spreadsheet. Name it <strong>PodScheduler</strong>.</div>
-      </div>
-      <div class="step">
-        <div class="step-n">2</div>
-        <div class="step-b">Inside the spreadsheet, click <strong>Extensions → Apps Script</strong>. This opens the script editor.</div>
-      </div>
-      <div class="step">
-        <div class="step-n">3</div>
-        <div class="step-b">Delete everything in the editor. Then open the file <strong>GoogleAppsScript.js</strong> (downloaded alongside this app), copy the entire contents, and paste it into the editor. Click <strong>Save</strong> (the floppy disk icon).</div>
-      </div>
-      <div class="step">
-        <div class="step-n">4</div>
-        <div class="step-b">Click <strong>Deploy → New deployment</strong>. Set type to <strong>Web app</strong>. Set <strong>Execute as: Me</strong> and <strong>Who has access: Anyone</strong>. Click <strong>Deploy</strong>. Approve the permissions popup.</div>
-      </div>
-      <div class="step">
-        <div class="step-n">5</div>
-        <div class="step-b">Copy the <strong>Web app URL</strong> it gives you — it looks like:<br><code>https://script.google.com/macros/s/AKfycb.../exec</code><br>Paste it in the box below and click Connect.</div>
-      </div>
-
-      <div class="field-row" style="margin-top:1rem">
-        <label>Web App URL (from Step 5)</label>
-        <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec" value="${GAS.url}">
-      </div>
-      <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
-        <button class="btn btn-gs" onclick="testGAS()">Connect &amp; sync</button>
-      </div>
-      ${GAS.log.length>0?`<div style="margin-top:.875rem"><div class="sync-log" id="gs-log">${GAS.log.join('<br>')}</div></div>`:'<div id="gs-log" style="display:none"></div>'}
-    </div>
-  </div>`;
-}
-
-function rSG(c){let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;DAYS.forEach(d=>{const sch=(c.schedule[d]||[]).includes(t);const asgn=gA(c.id,d,t);let cls='';if(asgn)cls='assigned';else if(sch)cls='sched';h+=`<div class="sc ${cls||'empty'}" onclick="togCS('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' - '+gsN(asgn)?.name:''}"></div>`;});});return h+'</div>';}
+function rSG(c){let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;DAYS.forEach(d=>{const sch=(c.schedule[d]||[]).includes(t);const asgn=gA(c.id,d,t);let cls='';if(asgn)cls='assigned';else if(sch)cls='sched';h+=`<div class="sc ${cls||'empty'}" onclick="togCS('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' — '+gsN(asgn)?.name:''}"></div>`;});});return h+'</div>';}
 function rAG(s){let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;DAYS.forEach(d=>{const av=(s.availability[d]||[]).includes(t);h+=`<div class="sc ${av?'avail':'empty'}" onclick="togSS('${s.id}','${d}','${t}')"></div>`;});});return h+'</div>';}
 
-/* ===== ACTIONS ===== */
-function selC(id){S.selClient=id;render();}function selS(id){S.selStaff=id;render();}function selCO(id){S.calloutStaff=id;render();}function setET(t){S.edTab=t;S.expEdit=null;S.rStart=null;render();}function togExp(id){S.expEdit=S.expEdit===id?null:id;if(S.expEdit!==id)S.rStart=null;render();}
+function selC(id){S.selClient=id;render();}
+function selS(id){S.selStaff=id;render();}
+function selCO(id){S.calloutStaff=id;render();}
+function setET(t){S.edTab=t;S.expEdit=null;S.rStart=null;render();}
+function togExp(id){S.expEdit=S.expEdit===id?null:id;if(S.expEdit!==id)S.rStart=null;render();}
 function togPod(cid,sid){if(!S.pods[cid])S.pods[cid]=[];const i=S.pods[cid].indexOf(sid);if(i>=0)S.pods[cid].splice(i,1);else S.pods[cid].push(sid);markDirty();render();}
 function togCS(cid,day,slot){const c=gcN(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];const i=c.schedule[day].indexOf(slot);if(i>=0){c.schedule[day].splice(i,1);dA(cid,day,slot);}else{c.schedule[day].push(slot);const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}markDirty();render();}
 function togSS(sid,day,slot){const s=gsN(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];const i=s.availability[day].indexOf(slot);if(i>=0)s.availability[day].splice(i,1);else s.availability[day].push(slot);markDirty();render();}
@@ -522,11 +395,11 @@ function addC(){const name=prompt('New client name:');if(!name?.trim())return;co
 function addS(){const name=prompt('New staff name:');if(!name?.trim())return;const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});S.selDaysS[id]=new Set();S.selStaff=id;markDirty();render();}
 function rmC(id){if(!confirm('Remove this client?'))return;S.clients=S.clients.filter(c=>c.id!==id);delete S.pods[id];delete S.assignments[id];delete S.selDaysC[id];S.selClient=S.clients[0]?.id||null;markDirty();render();}
 function rmS(id){if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});Object.values(S.assignments).forEach(days=>{Object.values(days).forEach(slots=>{Object.keys(slots).forEach(sl=>{if(slots[sl]===id)delete slots[sl];});});});S.calledOut=S.calledOut.filter(s=>s!==id);delete S.selDaysS[id];S.selStaff=S.staff[0]?.id||null;markDirty();render();}
-function ldSt(){const ok=tryLoad();if(ok){render();showToast('Loaded',false);}else showToast('No saved data',true);}
+function ldSt(){const ok=tryLoad();if(ok){render();showToast('Data loaded',false);}else showToast('No saved data found',true);}
 
 function render(){
   const mc=document.getElementById('mc');if(!mc)return;
-  const block=['pods','data','save','gsheets'];mc.style.display=block.includes(S.tab)?'block':'flex';
+  const block=['pods','data','save'];mc.style.display=block.includes(S.tab)?'block':'flex';
   if(S.tab==='today')mc.innerHTML=rToday();
   else if(S.tab==='week')mc.innerHTML=rWeek();
   else if(S.tab==='clients')mc.innerHTML=rClients();
@@ -535,11 +408,9 @@ function render(){
   else if(S.tab==='callout')mc.innerHTML=rCallout();
   else if(S.tab==='data')mc.innerHTML=rData();
   else if(S.tab==='save')mc.innerHTML=rSave();
-  else if(S.tab==='gsheets')mc.innerHTML=rGSheets();
-  updSI();updBadge();
+  updSI();
 }
 
-loadGASUrl();
 tryLoad();
 render();
 </script>
