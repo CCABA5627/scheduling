@@ -225,7 +225,10 @@ const DD={
 
 function slotsInBlock(from, to){
   const lo=t2m(from), hi=t2m(to);
-  return TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<=hi);
+  // End is exclusive so adjacent blocks (e.g. 9-1 and 1-5) don't share the 1:00 slot.
+  // Exception: single-point blocks (from === to) include the one slot.
+  if(lo===hi) return TIMES.filter(t=>t2m(t)===lo);
+  return TIMES.filter(t=>t2m(t)>=lo && t2m(t)<hi);
 }
 
 function initSDS(st){const sd={};st.forEach(s=>{sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));});return sd;}
