@@ -904,11 +904,92 @@ function rES(){
 }
 
 function rAG(s){
-  let h=`<div style="display:grid;grid-template-columns:72px repeat(5,1fr);gap:2px"><div></div>`;
-  DAYS.forEach(d=>{h+=`<div style="text-align:center;font-size:10px;font-weight:500;color:#888;padding:5px 3px;text-transform:uppercase">${d}</div>`;});
-  TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div style="font-size:9px;color:#888;padding:0 4px;display:flex;align-items:center;justify-content:flex-end;height:22px">${isH?t:''}</div>`;
-    DAYS.forEach(d=>{const av=(s.availability[d]||[]).includes(t);h+=`<div style="height:22px;border-radius:2px;cursor:pointer;border:0.5px solid rgba(0,0,0,.1);${av?'background:#E6F1FB;border-color:#85B7EB':''}" onclick="togSS('${s.id}','${d}','${t}')"></div>`;});});
-  return h+'</div>';
+  // Build a map of all slots this staff member is assigned to, per day, with client name
+  const assigned={};
+  DAYS.forEach(d=>assigned[d]={});
+  S.clients.forEach(c=>{
+    (c.schedule[d]||[]);
+    DAYS.forEach(d=>{
+      (c.schedule[d]||[]).forEach(blk=>{
+        if(blk.staffId!==s.id)return;
+        slotsInBlock(blk.from,blk.to).forEach(slot=>{
+          assigned[d][slot]={clientName:c.name,from:blk.from,to:blk.to};
+        });
+      });
+    });
+  });
+  // Also include temp blocks
+  (S.tempBlocks||[]).forEach(tb=>{
+    if(tb.staffId!==s.id)return;
+    tb.slots.forEach(slot=>{
+      if(!assigned[tb.day])assigned[tb.day]={};
+      assigned[tb.day][slot]={clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to,isTemp:true};
+    });
+  });
+
+  let html=`<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:72px repeat(5,1fr);gap:2px;min-width:420px">`;
+  // Legend
+  html+=`</div></div>`;
+  // Build legend
+  html=`<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.625rem;font-size:10px;color:#777">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Scheduled (assigned)</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:0.5px solid #85B7EB;display:inline-block"></span>Available</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f5f5f3;border:0.5px solid rgba(0,0,0,.1);display:inline-block"></span>Unavailable</span>
+  </div>
+  <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:72px repeat(5,1fr);gap:2px;min-width:420px">
+    <div></div>`;
+  DAYS.forEach(d=>{html+=`<div style="text-align:center;font-size:10px;font-weight:500;color:#888;padding:5px 3px;text-transform:uppercase">${d}</div>`;});
+
+  TIMES.forEach(t=>{
+    const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');
+    html+=`<div style="font-size:9px;color:#888;padding:0 4px;display:flex;align-items:center;justify-content:flex-end;height:22px">${isH?t:''}</div>`;
+    DAYS.forEach(d=>{
+      const av=(s.availability[d]||[]).includes(t);
+      const asgn=assigned[d]?.[t];
+      let bg,border,title='',cursor='default';
+      if(asgn){
+        bg='#9FE1CB';border='#1D9E75';
+        title=`${asgn.clientName} ${asgn.from}–${asgn.to}`;
+        cursor='help';
+      } else if(av){
+        bg='#E6F1FB';border='#85B7EB';
+        title='Available';
+      } else {
+        bg='transparent';border='rgba(0,0,0,.08)';
+      }
+      html+=`<div style="height:22px;border-radius:2px;border:0.5px solid ${border};background:${bg};cursor:${cursor}" title="${title}"></div>`;
+    });
+  });
+  html+=`</div></div>`;
+
+  // Also show a weekly summary of assignments
+  const weekSummary=[];
+  DAYS.forEach(d=>{
+    const dayBlocks=[];
+    S.clients.forEach(c=>{
+      (c.schedule[d]||[]).forEach(blk=>{
+        if(blk.staffId===s.id)dayBlocks.push({clientName:c.name,from:blk.from,to:blk.to});
+      });
+    });
+    (S.tempBlocks||[]).forEach(tb=>{if(tb.staffId===s.id&&tb.day===d)dayBlocks.push({clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to});});
+    if(dayBlocks.length)weekSummary.push({day:d,blocks:dayBlocks.sort((a,b)=>t2m(a.from)-t2m(b.from))});
+  });
+
+  if(weekSummary.length){
+    html+=`<div style="margin-top:1rem"><div style="font-size:11px;font-weight:500;color:#555;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">This week's assignments</div>`;
+    weekSummary.forEach(({day,blocks})=>{
+      html+=`<div style="margin-bottom:6px"><span style="font-size:11px;font-weight:500;color:#534AB7;min-width:36px;display:inline-block">${day}</span>`;
+      blocks.forEach(b=>{
+        html+=` <span style="font-size:11px;background:#E1F5EE;color:#085041;padding:2px 8px;border-radius:12px;margin-right:4px">${b.clientName} ${b.from}–${b.to}</span>`;
+      });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  } else {
+    html+=`<div style="font-size:11px;color:#888;margin-top:.75rem;font-style:italic">No sessions assigned this week.</div>`;
+  }
+
+  return html;
 }
 
 function rSave(){
