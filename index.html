@@ -44,6 +44,7 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .wsb.wa{background:#E1F5EE;color:#085041;}
 .wsb.wu{background:#FAECE7;color:#4A1B0C;border:1px dashed #F0997B;}
 .wsb.wco{background:#F5C4B3;color:#4A1B0C;border:1px solid #F0997B;}
+.wsb.wconflict{background:#FAECE7;color:#D85A30;border:1px solid #D85A30;}
 .wsb.wtmp{background:#E6F1FB;color:#0C447C;border:1px dashed #85B7EB;}
 .wsb-time{font-size:10px;opacity:.75;margin-bottom:1px;}
 .wsb-client{font-size:11px;font-weight:500;}
@@ -280,10 +281,19 @@ function openAssignModal(cid, day, blockIdx, isTemp, tempId){
     html+='<div class="modal-section">Available for this block</div>';
     avail.forEach(o=>{
       const s=gsN(o.sid);const isCur=o.sid===currentSid;
-      const note=o.usedOther?' <span style="font-size:10px;color:#888">(other block today)</span>':'';
-      html+=`<div class="staff-opt${isCur?' current':''}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${o.sid}','${tempId||''}')">
+      // Check for conflicts with this assignment
+      const conflict=checkConflict(o.sid,day,slots,cid,isTemp?-1:blockIdx,tempId||null);
+      let subNote='';
+      if(conflict.hasConflict){
+        const cnames=conflict.conflicts.map(c=>c.name+' '+c.from+'-'+c.to).join(', ');
+        subNote=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Double-booked: ${cnames}</div>`;
+      } else if(o.usedOther){
+        subNote=`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`;
+      }
+      const borderStyle=conflict.hasConflict?'border:1.5px solid #F0997B;':'';
+      html+=`<div class="staff-opt${isCur?' current':''}" style="${borderStyle}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${o.sid}','${tempId||''}')">
         <div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div>
-        <div><div class="staff-opt-name">${s.name}${isCur?' \u2713':''}</div><div class="staff-opt-sub">${o.score} overlap slots${note}</div></div>
+        <div style="flex:1"><div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${conflict.hasConflict?'<span style=\"font-size:11px;color:#D85A30\">⚠</span>':''}</div><div class="staff-opt-sub">${o.score} overlap slots</div>${subNote}</div>
       </div>`;
     });
   }
@@ -434,6 +444,68 @@ function overlap(sid,cid){
   });
   return o;
 }
+// Returns all time slots a staff member is assigned to on a given day (across all clients + temp blocks)
+function getStaffDaySlots(sid, day){
+  const slots = new Set();
+  S.clients.forEach(c=>{
+    (c.schedule[day]||[]).forEach(blk=>{
+      if(blk.staffId===sid) slotsInBlock(blk.from,blk.to).forEach(s=>slots.add(s));
+    });
+  });
+  (S.tempBlocks||[]).forEach(tb=>{
+    if(tb.staffId===sid&&tb.day===day) tb.slots.forEach(s=>slots.add(s));
+  });
+  return slots;
+}
+
+// Returns conflicts for a proposed assignment: {hasConflict, conflictingClients:[{name,from,to}]}
+function checkConflict(sid, day, newSlots, excludeCid, excludeBlockIdx, excludeTempId){
+  const conflicts=[];
+  const newSet=new Set(newSlots);
+  S.clients.forEach(c=>{
+    (c.schedule[day]||[]).forEach((blk,idx)=>{
+      if(blk.staffId!==sid)return;
+      if(c.id===excludeCid&&idx===excludeBlockIdx)return; // same block being reassigned
+      const overlap=slotsInBlock(blk.from,blk.to).filter(s=>newSet.has(s));
+      if(overlap.length>0)conflicts.push({name:c.name,from:blk.from,to:blk.to});
+    });
+  });
+  (S.tempBlocks||[]).forEach(tb=>{
+    if(tb.staffId!==sid||tb.day!==day)return;
+    if(tb.id===excludeTempId)return;
+    const overlap=tb.slots.filter(s=>newSet.has(s));
+    if(overlap.length>0)conflicts.push({name:gcN(tb.cid)?.name||'?'+' (temp)',from:tb.from,to:tb.to});
+  });
+  return{hasConflict:conflicts.length>0,conflicts};
+}
+
+// Check if any staff member is double-booked on a given day (for badge display)
+function getConflictingStaffOnDay(day){
+  const staffSlots={}; // sid -> [{from,to,clientName}]
+  S.clients.forEach(c=>{
+    (c.schedule[day]||[]).forEach(blk=>{
+      if(!blk.staffId)return;
+      if(!staffSlots[blk.staffId])staffSlots[blk.staffId]=[];
+      staffSlots[blk.staffId].push({slots:new Set(slotsInBlock(blk.from,blk.to)),from:blk.from,to:blk.to,name:c.name});
+    });
+  });
+  (S.tempBlocks||[]).forEach(tb=>{
+    if(!tb.staffId||tb.day!==day)return;
+    if(!staffSlots[tb.staffId])staffSlots[tb.staffId]=[];
+    staffSlots[tb.staffId].push({slots:new Set(tb.slots),from:tb.from,to:tb.to,name:(gcN(tb.cid)?.name||'?')+' (temp)'});
+  });
+  const conflicting=new Set();
+  Object.entries(staffSlots).forEach(([sid,blocks])=>{
+    for(let i=0;i<blocks.length;i++){
+      for(let j=i+1;j<blocks.length;j++){
+        const overlap=[...blocks[i].slots].some(s=>blocks[j].slots.has(s));
+        if(overlap){conflicting.add(sid);break;}
+      }
+    }
+  });
+  return conflicting;
+}
+
 function bestForSlot(cid,day,slot,excl){
   const pod=S.pods[cid]||[];const res=[];
   pod.forEach(sid=>{if(sid===excl||S.calledOut.includes(sid))return;const s=gsN(sid);if(!s)return;if((s.availability[day]||[]).includes(slot))res.push({sid,score:overlap(sid,cid)});});
@@ -469,8 +541,10 @@ function rToday(){
   const sh=blocks.length===0?`<div class="es">No sessions for ${today}</div>`
     :blocks.map(bl=>{
       const co=bl.staffId&&S.calledOut.includes(bl.staffId);
-      const bdr=co?'border-color:#F0997B;background:#FAECE7':bl.isTemp?'border-color:#85B7EB;background:#E6F1FB':'';
-      const chip=bl.staffId?(co?`<span class="cc">&#9888; ${gsN(bl.staffId)?.name} (out)</span>`:`<span class="sc2">${gsN(bl.staffId)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
+      const todayConflicts=getConflictingStaffOnDay(today);
+      const blConflict=bl.staffId&&todayConflicts.has(bl.staffId)&&!co;
+      const bdr=co?'border-color:#F0997B;background:#FAECE7':blConflict?'border-color:#D85A30;background:#FAECE7':bl.isTemp?'border-color:#85B7EB;background:#E6F1FB':'';
+      const chip=bl.staffId?(co?`<span class="cc">&#9888; ${gsN(bl.staffId)?.name} (out)</span>`:blConflict?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FAECE7;color:#D85A30;font-weight:500">⚠ ${gsN(bl.staffId)?.name} (conflict)</span>`:`<span class="sc2">${gsN(bl.staffId)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
       const tempTag=bl.isTemp?`<span class="tc">Temp${bl.label?' \u2013 '+bl.label:''}</span>`:'';
       const bkey=regBlock('t_'+bl.client.id+'_'+today+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),
         {cid:bl.client.id,day:today,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
@@ -488,7 +562,8 @@ function rToday(){
       <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button></div>
     <div class="ss"><div class="sl">Today \u2014 ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
-      <div style="background:#FAECE7;border-radius:7px;padding:.625rem;margin-bottom:8px"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div>
+      <div style="background:#FAECE7;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div>
+      ${getConflictingStaffOnDay(today).size>0?`<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:7px;padding:.625rem;margin-bottom:8px"><div style="font-size:10px;color:#D85A30;font-weight:500">⚠ Conflicts</div><div style="font-size:16px;font-weight:500;color:#D85A30">${getConflictingStaffOnDay(today).size} staff double-booked</div></div>`:''}
       <button class="btn btn-b" style="width:100%" onclick="openTempModal('${today}')">+ Add temp block</button></div>
     <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
   </div><div class="content">${banner}<div class="card"><div class="ch"><div class="ct">Today's Sessions \u2014 ${today}</div></div>${sh}</div></div></div>`;
@@ -503,8 +578,10 @@ function rWeek(){
     const inner=blocks.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`
       :blocks.map(bl=>{
         const co=bl.staffId&&S.calledOut.includes(bl.staffId);
-        const cls=bl.isTemp?'wtmp':co?'wco':bl.staffId?'wa':'wu';
-        const sname=bl.staffId?(co?`\u26a0 ${gsN(bl.staffId)?.name} (out)`:gsN(bl.staffId)?.name):'Tap to assign';
+        const dayConflicts=getConflictingStaffOnDay(d);
+        const hasConflict=bl.staffId&&dayConflicts.has(bl.staffId)&&!co;
+        const cls=bl.isTemp?'wtmp':co?'wco':hasConflict?'wconflict':bl.staffId?'wa':'wu';
+        const sname=bl.staffId?(co?`\u26a0 ${gsN(bl.staffId)?.name} (out)`:hasConflict?`\u26a0 ${gsN(bl.staffId)?.name} (conflict)`:`${gsN(bl.staffId)?.name}`):'Tap to assign';
         const bkey=regBlock('w_'+bl.client.id+'_'+d+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),
           {cid:bl.client.id,day:d,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
         // Delete button — stops propagation so it doesn't open modal
@@ -540,6 +617,7 @@ function rWeek(){
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px dashed #F0997B;display:inline-block"></span>Needs coverage</span>
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:1px dashed #85B7EB;display:inline-block"></span>Temp</span>
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#F5C4B3;display:inline-block"></span>Called out</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #D85A30;display:inline-block"></span>⚠ Conflict</span>
     </div>
     <div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:600px">${cols}</div></div>
   </div></div>`;
