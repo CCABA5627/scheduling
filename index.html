@@ -1,124 +1,128 @@
-cat > /mnt/user-data/outputs/PodScheduler.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PodScheduler</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; font-size: 14px; }
 .app { display: flex; flex-direction: column; min-height: 100vh; }
-.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,.15); padding: 0 1.25rem; display: flex; align-items: center; height: 48px; flex-wrap: wrap; }
+.nav { background: #fff; border-bottom: 0.5px solid rgba(0,0,0,.15); padding: 0 1.25rem; display: flex; align-items: center; height: 48px; overflow-x: auto; }
 .nav-brand { font-size: 14px; font-weight: 500; margin-right: 1.5rem; white-space: nowrap; }
-.nav-tab { padding: 0 .75rem; height: 48px; display: flex; align-items: center; gap: 5px; font-size: 12px; color: #666; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; text-decoration: none; }
+.nav-tab { padding: 0 .75rem; height: 48px; display: flex; align-items: center; font-size: 12px; color: #666; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .nav-tab:hover { color: #111; }
 .nav-tab.active { color: #111; border-bottom-color: #534AB7; font-weight: 500; }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-.save-ind { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; }
-.save-ind.saved { color: #1D9E75; } .save-ind.unsaved { color: #EF9F27; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 1rem; }
+.si { font-size: 11px; color: #888; white-space: nowrap; }
+.si.saved { color: #1D9E75; } .si.unsaved { color: #EF9F27; }
 .main { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 48px); }
 .sidebar { width: 230px; background: #fff; border-right: 0.5px solid rgba(0,0,0,.15); overflow-y: auto; flex-shrink: 0; }
 .content { flex: 1; overflow-y: auto; padding: 1.25rem; }
-.sb-sec { padding: .875rem; border-bottom: 0.5px solid rgba(0,0,0,.12); }
-.sb-lbl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: #888; margin-bottom: .625rem; }
-.sb-item { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 6px; cursor: pointer; margin-bottom: 2px; }
-.sb-item:hover { background: #f0f0ee; }
-.sb-item.sel { background: #EEEDFE; color: #3C3489; }
-.sb-item .iname { font-size: 12px; flex: 1; }
-.sb-item .badge { font-size: 10px; padding: 1px 5px; border-radius: 10px; background: #eee; color: #666; }
-.sb-item.sel .badge { background: #AFA9EC; color: #26215C; }
+.ss { padding: .875rem; border-bottom: 0.5px solid rgba(0,0,0,.12); }
+.sl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: #888; margin-bottom: .5rem; }
+.si2 { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 6px; cursor: pointer; margin-bottom: 2px; }
+.si2:hover { background: #f0f0ee; }
+.si2.sel { background: #EEEDFE; color: #3C3489; }
+.si2 .in { font-size: 12px; flex: 1; }
+.si2 .bx { font-size: 10px; padding: 1px 5px; border-radius: 10px; background: #eee; color: #666; }
+.si2.sel .bx { background: #AFA9EC; color: #26215C; }
 .av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; flex-shrink: 0; }
 .av-c { background: #E1F5EE; color: #085041; } .av-s { background: #E6F1FB; color: #0C447C; }
 .add-btn { width: 100%; padding: 5px 7px; border: 0.5px dashed rgba(0,0,0,.2); border-radius: 6px; background: none; color: #888; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; margin-top: 5px; font-family: inherit; }
-.add-btn:hover { background: #f5f5f3; color: #111; }
+.add-btn:hover { background: #f5f5f3; }
 .card { background: #fff; border: 0.5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 1.125rem; margin-bottom: .875rem; }
-.card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: .875rem; }
-.card-title { font-size: 14px; font-weight: 500; }
+.ch { display: flex; align-items: center; justify-content: space-between; margin-bottom: .875rem; }
+.ct { font-size: 14px; font-weight: 500; }
 .sgrid { display: grid; gap: 2px; }
-.day-hdr { text-align: center; font-size: 10px; font-weight: 500; color: #888; padding: 5px 3px; text-transform: uppercase; letter-spacing: .04em; }
-.time-lbl { font-size: 9px; color: #888; padding: 0 4px; display: flex; align-items: center; justify-content: flex-end; height: 22px; }
-.scell { height: 22px; border-radius: 2px; cursor: pointer; border: 0.5px solid rgba(0,0,0,.1); display: flex; align-items: center; justify-content: center; font-size: 8px; }
-.scell.empty:hover { background: #EEEDFE; border-color: #AFA9EC; }
-.scell.sched { background: #E1F5EE; border-color: #5DCAA5; color: #085041; }
-.scell.avail { background: #E6F1FB; border-color: #85B7EB; }
-.scell.assigned { background: #9FE1CB; border-color: #1D9E75; color: #04342C; font-size: 8px; font-weight: 500; padding: 1px; text-align: center; line-height: 1.1; overflow: hidden; }
-.week-day-col { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 8px; overflow: hidden; }
-.week-day-hdr { padding: 8px 10px; font-size: 12px; font-weight: 500; background: #f5f5f3; border-bottom: 0.5px solid rgba(0,0,0,.12); }
-.week-slot { padding: 6px 8px; border-bottom: 0.5px solid rgba(0,0,0,.08); min-height: 48px; }
-.week-session { border-radius: 5px; padding: 4px 7px; display: flex; align-items: center; gap: 5px; font-size: 11px; margin-bottom: 3px; }
-.ws-a { background: #E1F5EE; color: #085041; } .ws-u { background: #FAECE7; color: #4A1B0C; } .ws-co { background: #F5C4B3; color: #4A1B0C; border: 1px solid #F0997B; }
-.today-slot { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.s-chip { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #E6F1FB; color: #185FA5; }
-.u-chip { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #FAECE7; color: #993C1D; }
-.co-chip { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #F5C4B3; color: #4A1B0C; }
-.pod-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(130px,1fr)); gap: 6px; margin-top: .625rem; }
-.pod-m { background: #f5f5f3; border: 0.5px solid rgba(0,0,0,.12); border-radius: 7px; padding: 7px 9px; display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.pod-m.inp { background: #E6F1FB; border-color: #85B7EB; }
-.cov-opt { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 7px; padding: 8px 10px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; }
+.dh { text-align: center; font-size: 10px; font-weight: 500; color: #888; padding: 5px 3px; text-transform: uppercase; }
+.tl { font-size: 9px; color: #888; padding: 0 4px; display: flex; align-items: center; justify-content: flex-end; height: 22px; }
+.sc { height: 22px; border-radius: 2px; cursor: pointer; border: 0.5px solid rgba(0,0,0,.1); }
+.sc.empty:hover { background: #EEEDFE; }
+.sc.sched { background: #E1F5EE; border-color: #5DCAA5; }
+.sc.avail { background: #E6F1FB; border-color: #85B7EB; }
+.sc.assigned { background: #9FE1CB; border-color: #1D9E75; }
+.wdc { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 8px; overflow: hidden; }
+.wdh { padding: 8px 10px; font-size: 12px; font-weight: 500; background: #f5f5f3; border-bottom: 0.5px solid rgba(0,0,0,.12); }
+.wsl { padding: 6px 8px; border-bottom: 0.5px solid rgba(0,0,0,.08); min-height: 48px; }
+.wse { border-radius: 5px; padding: 4px 7px; display: flex; align-items: center; gap: 5px; font-size: 11px; margin-bottom: 3px; }
+.wa { background: #E1F5EE; color: #085041; } .wu { background: #FAECE7; color: #4A1B0C; } .wco { background: #F5C4B3; color: #4A1B0C; border: 1px solid #F0997B; }
+.ts { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.sc2 { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #E6F1FB; color: #185FA5; }
+.uc { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #FAECE7; color: #993C1D; }
+.cc { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #F5C4B3; color: #4A1B0C; }
+.pm { background: #f5f5f3; border: 0.5px solid rgba(0,0,0,.12); border-radius: 7px; padding: 7px 9px; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.pm.ip { background: #E6F1FB; border-color: #85B7EB; }
+.pg { display: grid; grid-template-columns: repeat(auto-fill,minmax(130px,1fr)); gap: 6px; margin-top: .625rem; }
+.co2 { background: #fff; border: 0.5px solid rgba(0,0,0,.12); border-radius: 7px; padding: 8px 10px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; }
 .mg { background: #C0DD97; color: #173404; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
 .mo { background: #FAC775; color: #412402; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
 .mp { background: #F5C4B3; color: #4A1B0C; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
-.co-banner { background: #FAECE7; border: 0.5px solid #F0997B; border-radius: 10px; padding: 1rem; margin-bottom: .875rem; }
-.co-title { font-size: 13px; font-weight: 500; color: #4A1B0C; display: flex; align-items: center; gap: 5px; margin-bottom: .5rem; }
+.cob { background: #FAECE7; border: 0.5px solid #F0997B; border-radius: 10px; padding: 1rem; margin-bottom: .875rem; }
+.cot { font-size: 13px; font-weight: 500; color: #4A1B0C; margin-bottom: .5rem; }
 input[type=text], select { padding: 6px 9px; border: 0.5px solid rgba(0,0,0,.2); border-radius: 6px; font-size: 12px; background: #fff; color: #111; font-family: inherit; width: 100%; }
-input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; box-shadow: 0 0 0 2px rgba(127,119,221,.15); }
-.btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; border: 0.5px solid rgba(0,0,0,.2); background: #fff; color: #111; transition: all .1s; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; }
+.btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; border: 0.5px solid rgba(0,0,0,.2); background: #fff; color: #111; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .btn:hover { background: #eee; }
 .btn-p { background: #534AB7; color: #fff; border-color: #534AB7; } .btn-p:hover { background: #3C3489; }
 .btn-d { background: #D85A30; color: #fff; border-color: #D85A30; } .btn-d:hover { background: #993C1D; }
 .btn-g { background: #1D9E75; color: #fff; border-color: #1D9E75; } .btn-g:hover { background: #085041; }
 .btn-sm { padding: 3px 8px; font-size: 11px; }
-.empty-st { text-align: center; padding: 2.5rem 1rem; color: #888; }
-.empty-st i { font-size: 28px; margin-bottom: .5rem; display: block; }
-.legend { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
-.leg-i { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #777; }
-.leg-d { width: 10px; height: 10px; border-radius: 2px; }
-.dot-r { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: #E24B4A; }
-.ie { border: none; background: transparent; font-size: 13px; font-weight: 500; font-family: inherit; color: #111; flex: 1; max-width: 200px; padding: 2px 4px; border-radius: 4px; cursor: text; }
-.ie:hover { background: #f0f0ee; }
+.es { text-align: center; padding: 2.5rem 1rem; color: #888; }
+.lg { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.li { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #777; }
+.ld { width: 10px; height: 10px; border-radius: 2px; }
+.dr { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: #E24B4A; }
+.ie { border: none; background: transparent; font-size: 13px; font-weight: 500; font-family: inherit; color: #111; flex: 1; max-width: 200px; padding: 2px 4px; border-radius: 4px; }
 .ie:focus { outline: none; background: #EEEDFE; }
-.scroll-x { overflow-x: auto; }
-.save-panel { background: #fff; border: 0.5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
-.save-panel h3 { font-size: 14px; font-weight: 500; margin-bottom: .75rem; display: flex; align-items: center; gap: 6px; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; align-items: center; gap: 6px; }
+.sx { overflow-x: auto; }
+.sp { background: #fff; border: 0.5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.sp h3 { font-size: 14px; font-weight: 500; margin-bottom: .75rem; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #1D9E75; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; z-index: 999; display: none; }
 .toast.err { background: #D85A30; }
-.exp-sec { background: #f5f5f3; border-radius: 10px; padding: 1rem; margin-top: .625rem; }
-.exp-sec h4 { font-size: 11px; font-weight: 500; color: #777; margin-bottom: .625rem; text-transform: uppercase; letter-spacing: .04em; }
-.days-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .5rem; }
-.day-pill { min-width: 52px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 2px solid rgba(0,0,0,.15); background: #fff; color: #888; font-family: inherit; text-align: center; transition: border-color .1s, background .1s, color .1s; user-select: none; }
-.day-pill:hover:not(.on) { border-color: #7F77DD; color: #534AB7; }
-.day-pill.on { background: #534AB7; color: #fff; border-color: #534AB7; }
-.hrs-block { margin-top: .875rem; }
-.hrs-block-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.hrs-block-day { font-size: 12px; font-weight: 500; color: #534AB7; }
-.hrs-block-count { font-size: 11px; color: #888; }
-.sel-link { font-size: 11px; color: #534AB7; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; margin-left: auto; }
-.sel-link:hover { color: #3C3489; }
-.hrs-grid { display: flex; flex-wrap: wrap; gap: 4px; }
-.hchip { padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: 2px solid rgba(0,0,0,.12); background: #fff; color: #777; font-family: inherit; transition: border-color .1s, background .1s, color .1s; user-select: none; white-space: nowrap; }
-.hchip:hover:not(.on) { border-color: #5DCAA5; color: #0F6E56; background: #E1F5EE; }
-.hchip.on { background: #1D9E75; color: #fff; border-color: #1D9E75; }
-.hchip.range-preview { background: #9FE1CB; border-color: #1D9E75; color: #04342C; }
-.range-hint { font-size: 11px; color: #0F6E56; background: #E1F5EE; border-radius: 6px; padding: 5px 10px; margin-top: 6px; display: flex; align-items: center; gap: 5px; }
+
+/* Edit data picker */
+.exs { background: #f5f5f3; border-radius: 10px; padding: 1rem; margin-top: .625rem; }
+.exs h4 { font-size: 11px; font-weight: 500; color: #777; margin-bottom: .625rem; text-transform: uppercase; letter-spacing: .04em; }
+.dr2 { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .5rem; }
+.dp {
+  min-width: 56px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 2px solid rgba(0,0,0,.18); background: #fff; color: #888;
+  font-family: inherit; text-align: center; transition: all .12s; user-select: none;
+}
+.dp:hover:not(.on) { border-color: #7F77DD; color: #534AB7; background: #EEEDFE; }
+.dp.on { background: #534AB7; color: #fff; border-color: #534AB7; }
+.hb { margin-top: .875rem; }
+.hbh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hbd { font-size: 12px; font-weight: 500; color: #534AB7; }
+.hbc { font-size: 11px; color: #888; }
+.slnk { font-size: 11px; color: #534AB7; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; margin-left: auto; }
+.hg { display: flex; flex-wrap: wrap; gap: 4px; }
+.hc {
+  padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;
+  border: 2px solid rgba(0,0,0,.12); background: #fff; color: #777;
+  font-family: inherit; transition: all .1s; user-select: none; white-space: nowrap;
+}
+.hc:hover:not(.on) { border-color: #5DCAA5; color: #0F6E56; background: #E1F5EE; }
+.hc.on { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+.hc.rp { background: #9FE1CB; border-color: #1D9E75; color: #04342C; }
+.rh { font-size: 11px; color: #0F6E56; background: #E1F5EE; border-radius: 6px; padding: 5px 10px; margin-top: 6px; }
+.it { font-size: 11px; color: #888; margin-top: 6px; font-style: italic; }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="nav">
     <span class="nav-brand">&#x1F9E9; PodScheduler</span>
-    <div class="nav-tab active" data-tab="today" onclick="switchTab('today')">Today</div>
-    <div class="nav-tab" data-tab="week" onclick="switchTab('week')">Weekly</div>
-    <div class="nav-tab" data-tab="clients" onclick="switchTab('clients')">Clients</div>
-    <div class="nav-tab" data-tab="staff" onclick="switchTab('staff')">Staff</div>
-    <div class="nav-tab" data-tab="pods" onclick="switchTab('pods')">Pods</div>
-    <div class="nav-tab" data-tab="callout" onclick="switchTab('callout')">Callout</div>
-    <div class="nav-tab" data-tab="data" onclick="switchTab('data')">Edit Data</div>
-    <div class="nav-tab" data-tab="save" onclick="switchTab('save')">Save/Load</div>
-    <div class="nav-right">
-      <span class="save-ind" id="save-ind"><span id="save-txt">Not saved</span></span>
-    </div>
+    <div class="nav-tab active" data-tab="today" onclick="go('today')">Today</div>
+    <div class="nav-tab" data-tab="week" onclick="go('week')">Weekly</div>
+    <div class="nav-tab" data-tab="clients" onclick="go('clients')">Clients</div>
+    <div class="nav-tab" data-tab="staff" onclick="go('staff')">Staff</div>
+    <div class="nav-tab" data-tab="pods" onclick="go('pods')">Pods</div>
+    <div class="nav-tab" data-tab="callout" onclick="go('callout')">Callout</div>
+    <div class="nav-tab" data-tab="data" onclick="go('data')">Edit Data</div>
+    <div class="nav-tab" data-tab="save" onclick="go('save')">Save/Load</div>
+    <div class="nav-right"><span class="si" id="si">Not saved</span></div>
   </div>
   <div class="main" id="mc"></div>
 </div>
@@ -126,11 +130,12 @@ input[type=text]:focus, select:focus { outline: none; border-color: #7F77DD; box
 <script>
 const DAYS=['Mon','Tue','Wed','Thu','Fri'];
 const ALL_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-function buildTimes(){const out=[];for(let h=8;h<=17;h++){for(let m=0;m<60;m+=15){if(h===17&&m>0)break;const ap=h<12?'AM':'PM';const h12=h===0?12:h>12?h-12:h;const ms=m===0?'00':''+m;out.push(`${h12}:${ms} ${ap}`);}}return out;}
-const TIMES=buildTimes();
-function timeToMin(t){const[time,ap]=t.split(' ');const[h,m]=time.split(':').map(Number);let hr=h;if(ap==='PM'&&h!==12)hr=h+12;if(ap==='AM'&&h===12)hr=0;return hr*60+m;}
-const SAVE_KEY='podscheduler_v2';
-const DEFDATA={
+function bT(){const o=[];for(let h=8;h<=17;h++){for(let m=0;m<60;m+=15){if(h===17&&m>0)break;const ap=h<12?'AM':'PM';const h12=h===0?12:h>12?h-12:h;o.push(`${h12}:${m===0?'00':m} ${ap}`);}}return o;}
+const TIMES=bT();
+function t2m(t){const[ti,ap]=t.split(' ');const[h,m]=ti.split(':').map(Number);let hr=h;if(ap==='PM'&&h!==12)hr=h+12;if(ap==='AM'&&h===12)hr=0;return hr*60+m;}
+const SK='podscheduler_v3';
+
+const DD={
   clients:[
     {id:'c1',name:'Margaret T.',schedule:{Mon:['9:00 AM','9:15 AM','9:30 AM','9:45 AM','10:00 AM','10:15 AM','10:30 AM','10:45 AM','11:00 AM'],Wed:['9:00 AM','9:15 AM','9:30 AM','9:45 AM','10:00 AM'],Fri:['9:00 AM','9:15 AM','9:30 AM','9:45 AM','10:00 AM','10:15 AM','10:30 AM','10:45 AM','11:00 AM']}},
     {id:'c2',name:'David R.',schedule:{Tue:['10:00 AM','10:15 AM','10:30 AM','10:45 AM','11:00 AM','11:15 AM','11:30 AM','11:45 AM','12:00 PM'],Thu:['10:00 AM','10:15 AM','10:30 AM','10:45 AM','11:00 AM']}},
@@ -155,348 +160,459 @@ const DEFDATA={
     c5:{Wed:{'10:00 AM':'s5','10:15 AM':'s5','10:30 AM':'s5','10:45 AM':'s5','11:00 AM':'s5'},Fri:{'10:00 AM':'s5','10:15 AM':'s5','10:30 AM':'s5','10:45 AM':'s5','11:00 AM':'s5'}},
   }
 };
-let S={tab:'today',...JSON.parse(JSON.stringify(DEFDATA)),selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],edTab:'clients',expEdit:null,rangeStart:null,rangeEntityId:null,rangeDay:null,rangeType:null,dirty:false,lastSaved:null};
-function tryLoad(){try{const r=localStorage.getItem(SAVE_KEY);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;updSI();return true;}}catch(e){}return false;}
-function doSave(){try{const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};localStorage.setItem(SAVE_KEY,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved',false);return true;}catch(e){showToast('Save failed',true);return false;}}
-function markDirty(){S.dirty=true;updSI();}
-function updSI(){const el=document.getElementById('save-ind'),txt=document.getElementById('save-txt');if(!el||!txt)return;if(S.dirty){el.className='save-ind unsaved';txt.textContent='Unsaved changes';}else if(S.lastSaved){el.className='save-ind saved';txt.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='save-ind';txt.textContent='Not saved yet';}}
-function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='flex';setTimeout(()=>{t.style.display='none';},2500);}
-function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString(),version:2};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);showToast('Downloaded backup',false);}
-function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.assignments=p.assignments||{};S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
-function resetData(){if(!confirm('Reset to sample data?'))return;const f=JSON.parse(JSON.stringify(DEFDATA));Object.assign(S,f);S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}render();showToast('Reset',false);}
-function exportXLSX(){
-  const rows=[];
-  rows.push(['PodScheduler — Weekly Schedule Export','','','','','','','','','']);
-  rows.push(['Generated:',new Date().toLocaleString(),'','','','','','','','']);
-  rows.push([]);
-  rows.push(['=== WEEKLY SCHEDULE ===']);
-  rows.push(['Client','Day','Start Time','End Time','Assigned Staff','Staff In Pod?','Notes']);
-  S.clients.forEach(c=>{
-    DAYS.forEach(d=>{
-      const slots=(c.schedule[d]||[]).slice().sort((a,b)=>timeToMin(a)-timeToMin(b));
-      if(!slots.length)return;
-      const groups=[];let cur=null;
-      slots.forEach(t=>{const sid=getAsgn(c.id,d,t);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid};groups.push(cur);}else cur.to=t;});
-      groups.forEach(g=>{
-        const staffName=g.sid?gs(g.sid)?.name:'UNASSIGNED';
-        const inPod=g.sid?(S.pods[c.id]||[]).includes(g.sid)?'Yes':'No':'N/A';
-        rows.push([c.name,d,g.from,g.to,staffName,inPod,'']);
-      });
-    });
+
+// selectedDays: persisted separately so toggling a day OFF then ON works even with 0 slots
+function initSelDays(clients){
+  const sd={};
+  clients.forEach(c=>{
+    sd[c.id]=new Set(Object.keys(c.schedule).filter(d=>DAYS.includes(d)));
   });
-  rows.push([]);
-  rows.push(['=== PODS ===']);
-  rows.push(['Client','Pod Member 1','Pod Member 2','Pod Member 3','Pod Member 4','Pod Member 5','Pod Member 6','Pod Member 7']);
-  S.clients.forEach(c=>{
-    const pod=(S.pods[c.id]||[]).map(sid=>gs(sid)?.name||sid);
-    rows.push([c.name,...pod,...Array(Math.max(0,7-pod.length)).fill('')]);
-  });
-  rows.push([]);
-  rows.push(['=== STAFF AVAILABILITY ===']);
-  rows.push(['Staff','Day','Available From','Available To','Total Slots']);
-  S.staff.forEach(s=>{
-    DAYS.forEach(d=>{
-      const slots=(s.availability[d]||[]).slice().sort((a,b)=>timeToMin(a)-timeToMin(b));
-      if(!slots.length)return;
-      rows.push([s.name,d,slots[0],slots[slots.length-1],slots.length]);
-    });
-  });
-  rows.push([]);
-  rows.push(['=== CLIENT SCHEDULES ===']);
-  rows.push(['Client','Day','Scheduled From','Scheduled To','Total Slots']);
-  S.clients.forEach(c=>{
-    DAYS.forEach(d=>{
-      const slots=(c.schedule[d]||[]).slice().sort((a,b)=>timeToMin(a)-timeToMin(b));
-      if(!slots.length)return;
-      rows.push([c.name,d,slots[0],slots[slots.length-1],slots.length]);
-    });
-  });
-  const csvContent=rows.map(r=>r.map(cell=>{const s=String(cell||'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
-  const bom='\uFEFF';
-  const blob=new Blob([bom+csvContent],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download='PodScheduler-Export.csv';a.click();URL.revokeObjectURL(url);
-  showToast('Exported as CSV (open in Excel)',false);
+  return sd;
 }
+function initSelDaysStaff(staff){
+  const sd={};
+  staff.forEach(s=>{
+    sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));
+  });
+  return sd;
+}
+
+let S={
+  tab:'today',
+  ...JSON.parse(JSON.stringify(DD)),
+  selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],
+  edTab:'clients',expEdit:null,
+  rStart:null,rDay:null,rEid:null,rType:null,
+  dirty:false,lastSaved:null,
+};
+S.selDaysC=initSelDays(S.clients);
+S.selDaysS=initSelDaysStaff(S.staff);
+
+function tryLoad(){
+  try{
+    const r=localStorage.getItem(SK);
+    if(r){
+      const p=JSON.parse(r);
+      S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;
+      S.pods=p.pods||S.pods;S.assignments=p.assignments||S.assignments;
+      S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;
+      S.lastSaved=p.savedAt||null;S.dirty=false;
+      S.selDaysC=initSelDays(S.clients);
+      S.selDaysS=initSelDaysStaff(S.staff);
+      updSI();return true;
+    }
+  }catch(e){}return false;
+}
+function doSave(){
+  try{
+    const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,savedAt:new Date().toISOString()};
+    localStorage.setItem(SK,JSON.stringify(d));
+    S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved',false);return true;
+  }catch(e){showToast('Save failed',true);return false;}
+}
+function markDirty(){S.dirty=true;updSI();}
+function updSI(){
+  const el=document.getElementById('si');if(!el)return;
+  if(S.dirty){el.className='si unsaved';el.textContent='Unsaved changes';}
+  else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+  else{el.className='si';el.textContent='Not saved yet';}
+}
+function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
+function exportJSON(){
+  const d={clients:S.clients,staff:S.staff,pods:S.pods,assignments:S.assignments,exportedAt:new Date().toISOString(),version:3};
+  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);
+  showToast('Downloaded backup',false);
+}
+function importJSON(){
+  const i=document.createElement('input');i.type='file';i.accept='.json';
+  i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;
+      S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.assignments=p.assignments||{};
+      S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];
+      S.selDaysC=initSelDays(S.clients);S.selDaysS=initSelDaysStaff(S.staff);
+      markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};
+    r.readAsText(f);};i.click();
+}
+function resetData(){
+  if(!confirm('Reset to sample data?'))return;
+  const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);
+  S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;
+  S.selDaysC=initSelDays(S.clients);S.selDaysS=initSelDaysStaff(S.staff);
+  try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset',false);
+}
+function exportCSV(){
+  const rows=[];
+  rows.push(['PodScheduler Export','','','','','','','']);
+  rows.push(['Generated:',new Date().toLocaleString()]);rows.push([]);
+  rows.push(['=== WEEKLY SCHEDULE ===']);
+  rows.push(['Client','Day','Start','End','Assigned Staff','In Pod?','Slots','Notes']);
+  S.clients.forEach(c=>{DAYS.forEach(d=>{
+    const slots=(c.schedule[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!slots.length)return;
+    const groups=[];let cur=null;
+    slots.forEach(t=>{const sid=S.assignments[c.id]?.[d]?.[t];if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,n:1};groups.push(cur);}else{cur.to=t;cur.n++;}});
+    groups.forEach(g=>{const sn=g.sid?(gs(g.sid)?.name||'?'):'UNASSIGNED';const ip=g.sid?(S.pods[c.id]||[]).includes(g.sid)?'Yes':'No':'-';rows.push([c.name,d,g.from,g.to,sn,ip,g.n,'']);});
+  });});
+  rows.push([]);rows.push(['=== PODS ===']);
+  rows.push(['Client','Staff 1','Staff 2','Staff 3','Staff 4','Staff 5','Staff 6','Staff 7']);
+  S.clients.forEach(c=>{const p=(S.pods[c.id]||[]).map(sid=>gs(sid)?.name||sid);rows.push([c.name,...p,...Array(Math.max(0,7-p.length)).fill('')]);});
+  rows.push([]);rows.push(['=== STAFF AVAILABILITY ===']);
+  rows.push(['Staff','Day','From','To','Slots','Hours']);
+  S.staff.forEach(s=>{DAYS.forEach(d=>{const sl=(s.availability[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!sl.length)return;rows.push([s.name,d,sl[0],sl[sl.length-1],sl.length,(sl.length*15/60).toFixed(2)+'h']);});});
+  const csv=rows.map(r=>r.map(v=>{const s=String(v||'');return s.includes(',')||s.includes('"')?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='PodScheduler-Export.csv';a.click();URL.revokeObjectURL(u);
+  showToast('Exported CSV (open in Excel)',false);
+}
+
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function gc(id){return S.clients.find(c=>c.id===id);}
 function gs(id){return S.staff.find(s=>s.id===id);}
 function overlap(sid,cid){const c=gc(cid),s=gs(sid);if(!c||!s)return 0;let o=0;DAYS.forEach(d=>{const cs=new Set(c.schedule[d]||[]);(s.availability[d]||[]).forEach(t=>{if(cs.has(t))o++;});});return o;}
 function bestFor(cid,day,slot,excl){const pod=S.pods[cid]||[];const res=[];pod.forEach(sid=>{if(sid===excl||S.calledOut.includes(sid))return;const s=gs(sid);if(!s)return;if((s.availability[day]||[]).includes(slot))res.push({sid,score:overlap(sid,cid)});});return res.sort((a,b)=>b.score-a.score);}
-function getAsgn(cid,day,slot){return S.assignments[cid]?.[day]?.[slot]||null;}
-function setAsgn(cid,day,slot,sid){if(!S.assignments[cid])S.assignments[cid]={};if(!S.assignments[cid][day])S.assignments[cid][day]={};S.assignments[cid][day][slot]=sid;}
-function delAsgn(cid,day,slot){if(S.assignments[cid]?.[day])delete S.assignments[cid][day][slot];}
+function gA(cid,day,slot){return S.assignments[cid]?.[day]?.[slot]||null;}
+function sA(cid,day,slot,sid){if(!S.assignments[cid])S.assignments[cid]={};if(!S.assignments[cid][day])S.assignments[cid][day]={};S.assignments[cid][day][slot]=sid;}
+function dA(cid,day,slot){if(S.assignments[cid]?.[day])delete S.assignments[cid][day][slot];}
 function todayDay(){const d=ALL_DAYS[new Date().getDay()];return DAYS.includes(d)?d:DAYS[0];}
-function switchTab(t){S.tab=t;S.rangeStart=null;document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));render();}
-function fmtSlotRange(slots){if(!slots||!slots.length)return'';const s=[...slots].sort((a,b)=>timeToMin(a)-timeToMin(b));return s[0]+' – '+s[s.length-1];}
-function renderToday(){
+function go(t){S.tab=t;S.rStart=null;document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));render();}
+function fmtR(slots){if(!slots||!slots.length)return'';const s=[...slots].sort((a,b)=>t2m(a)-t2m(b));return s[0]+(s.length>1?' - '+s[s.length-1]:'');}
+
+/* ---- Renders ---- */
+function rToday(){
   const today=todayDay();const slots=[];
-  S.clients.forEach(c=>{const ds=(c.schedule[today]||[]).slice().sort((a,b)=>timeToMin(a)-timeToMin(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=getAsgn(c.id,today,t);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid};groups.push(cur);}else cur.to=t;});groups.forEach(g=>slots.push({client:c,from:g.from,to:g.to,sid:g.sid}));});
-  slots.sort((a,b)=>timeToMin(a.from)-timeToMin(b.from));
-  const banner=S.calledOut.length>0?`<div class="co-banner"><div class="co-title">&#9888; Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gs(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:4px">${s?s.name:'?'}<span onclick="removeCallout('${sid}')" style="cursor:pointer;margin-left:2px">x</span></span>`;}).join('')}</div></div>`:'';
+  S.clients.forEach(c=>{const ds=(c.schedule[today]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=gA(c.id,today,t);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid};groups.push(cur);}else cur.to=t;});groups.forEach(g=>slots.push({client:c,from:g.from,to:g.to,sid:g.sid}));});
+  slots.sort((a,b)=>t2m(a.from)-t2m(b.from));
+  const banner=S.calledOut.length>0?`<div class="cob"><div class="cot">Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gs(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span onclick="rmCO('${sid}')" style="cursor:pointer">x</span></span>`;}).join('')}</div></div>`:'';
   const cov=slots.filter(s=>s.sid&&!S.calledOut.includes(s.sid)).length;
   const unc=slots.filter(s=>!s.sid||S.calledOut.includes(s.sid)).length;
-  const slotsHtml=slots.length===0?`<div class="empty-st">No sessions for ${today}</div>`
+  const sh=slots.length===0?`<div class="es">No sessions for ${today}</div>`
     :slots.map(sl=>{const co=sl.sid&&S.calledOut.includes(sl.sid);const bdr=co?'border-color:#F0997B;background:#FAECE7':'';
-      const chip=sl.sid?(co?`<span class="co-chip">&#9888; ${gs(sl.sid)?.name} (out)</span>`:`<span class="s-chip">${gs(sl.sid)?.name}</span>`):`<span class="u-chip">Needs coverage</span>`;
-      const btn=co?`<button class="btn btn-p btn-sm" onclick="goCallout('${sl.client.id}')">Find cover</button>`:`<button class="btn btn-sm" onclick="quickAsgn('${sl.client.id}','${today}')">Reassign</button>`;
-      return`<div class="today-slot" style="${bdr}"><div style="font-size:11px;color:#666;min-width:110px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="av av-c">${ini(sl.client.name)}</div><div style="font-size:12px;font-weight:500;flex:1">${sl.client.name}</div>${chip}${btn}</div>`;}).join('');
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">Quick callout</div>
+      const chip=sl.sid?(co?`<span class="cc">&#9888; ${gs(sl.sid)?.name} (out)</span>`:`<span class="sc2">${gs(sl.sid)?.name}</span>`):`<span class="uc">Needs coverage</span>`;
+      const btn=co?`<button class="btn btn-p btn-sm" onclick="goCallout2('${sl.client.id}')">Find cover</button>`:`<button class="btn btn-sm" onclick="qA('${sl.client.id}','${today}')">Reassign</button>`;
+      return`<div class="ts" style="${bdr}"><div style="font-size:11px;color:#666;min-width:110px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="av av-c">${ini(sl.client.name)}</div><div style="font-size:12px;font-weight:500;flex:1">${sl.client.name}</div>${chip}${btn}</div>`;}).join('');
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Quick callout</div>
     <select id="co-sel" style="margin-bottom:6px"><option value="">Select staff...</option>${S.staff.map(s=>`<option value="${s.id}"${S.calledOut.includes(s.id)?' disabled':''}>${s.name}${S.calledOut.includes(s.id)?' (out)':''}</option>`).join('')}</select>
-    <button class="btn btn-d" style="width:100%" onclick="markCallout()">Mark called out</button></div>
-    <div class="sb-sec"><div class="sb-lbl">Today — ${today}</div>
+    <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button></div>
+    <div class="ss"><div class="sl">Today - ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
       <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div></div>
-    <div class="sb-sec"><button class="btn btn-g" style="width:100%;margin-bottom:5px" onclick="doSave()">Save now</button>
-    <button class="btn" style="width:100%" onclick="exportXLSX()">Export to Excel/CSV</button></div>
-  </div><div class="content">${banner}<div class="card"><div class="card-hdr"><div class="card-title">Today's Sessions — ${today}</div></div>${slotsHtml}</div></div></div>`;
+    <div class="ss"><button class="btn btn-g" style="width:100%;margin-bottom:5px" onclick="doSave()">Save now</button>
+    <button class="btn" style="width:100%" onclick="exportCSV()">Export to Excel/CSV</button></div>
+  </div><div class="content">${banner}<div class="card"><div class="ch"><div class="ct">Today's Sessions - ${today}</div></div>${sh}</div></div></div>`;
 }
-function renderWeek(){
+function rWeek(){
   const byDay={};DAYS.forEach(d=>byDay[d]=[]);
-  S.clients.forEach(c=>{DAYS.forEach(d=>{const ds=(c.schedule[d]||[]).slice().sort((a,b)=>timeToMin(a)-timeToMin(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=getAsgn(c.id,d,t);const co=sid&&S.calledOut.includes(sid);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,co};groups.push(cur);}else cur.to=t;});groups.forEach(g=>byDay[d].push({client:c,from:g.from,to:g.to,sid:g.sid,co:g.co}));});});
-  DAYS.forEach(d=>byDay[d].sort((a,b)=>timeToMin(a.from)-timeToMin(b.from)));
+  S.clients.forEach(c=>{DAYS.forEach(d=>{const ds=(c.schedule[d]||[]).slice().sort((a,b)=>t2m(a)-t2m(b));if(!ds.length)return;const groups=[];let cur=null;ds.forEach(t=>{const sid=gA(c.id,d,t);const co=sid&&S.calledOut.includes(sid);if(!cur||cur.sid!==sid){cur={from:t,to:t,sid,co};groups.push(cur);}else cur.to=t;});groups.forEach(g=>byDay[d].push({client:c,from:g.from,to:g.to,sid:g.sid,co:g.co}));});});
+  DAYS.forEach(d=>byDay[d].sort((a,b)=>t2m(a.from)-t2m(b.from)));
   const total=Object.values(byDay).reduce((s,a)=>s+a.length,0);
   const cov=Object.values(byDay).reduce((s,a)=>s+a.filter(x=>x.sid&&!x.co).length,0);
-  const unc=total-cov;
   const cols=DAYS.map(d=>{const sessions=byDay[d];const isToday=d===todayDay();
     const inner=sessions.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`
-      :sessions.map(sl=>{const cls=sl.co?'ws-co':sl.sid?'ws-a':'ws-u';const sname=sl.sid?(sl.co?`⚠ ${gs(sl.sid)?.name} (out)`:gs(sl.sid)?.name):'Needs coverage';
-        return`<div class="week-slot"><div style="font-size:10px;color:#888;margin-bottom:3px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="week-session ${cls}"><div class="av av-c" style="width:18px;height:18px;font-size:7px">${ini(sl.client.name)}</div><div><div style="font-size:10px;font-weight:500">${sl.client.name}</div><div style="font-size:9px;opacity:.8">${sname}</div></div></div></div>`;}).join('');
-    return`<div class="week-day-col" style="${isToday?'border-color:#7F77DD':''}"><div class="week-day-hdr" style="${isToday?'background:#EEEDFE;color:#3C3489':''}">${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''} <span style="font-size:9px;margin-left:4px;color:#888">${sessions.length}</span></div>${inner}</div>`;}).join('');
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">Week summary</div>
+      :sessions.map(sl=>{const cls=sl.co?'wco':sl.sid?'wa':'wu';const sname=sl.sid?(sl.co?`&#9888; ${gs(sl.sid)?.name} (out)`:gs(sl.sid)?.name):'Needs coverage';
+        return`<div class="wsl"><div style="font-size:10px;color:#888;margin-bottom:3px">${sl.from}${sl.from!==sl.to?' - '+sl.to:''}</div><div class="wse ${cls}"><div class="av av-c" style="width:18px;height:18px;font-size:7px">${ini(sl.client.name)}</div><div><div style="font-size:10px;font-weight:500">${sl.client.name}</div><div style="font-size:9px;opacity:.8">${sname}</div></div></div></div>`;}).join('');
+    return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}">${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''} <span style="font-size:9px;color:#888">${sessions.length}</span></div>${inner}</div>`;}).join('');
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Week</div>
     <div style="background:#E6F1FB;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#042C53">Total</div><div style="font-size:20px;font-weight:500;color:#042C53">${total}</div></div>
     <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
-    <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div></div>
+    <div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${total-cov}</div></div></div>
   </div><div class="content"><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:550px">${cols}</div></div></div></div>`;
 }
-function renderClients(){
+function rClients(){
   const c=gc(S.selClient);const pods=S.pods[S.selClient]||[];
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">Clients (${S.clients.length})</div>
-    ${S.clients.map(cl=>`<div class="sb-item ${cl.id===S.selClient?'sel':''}" onclick="selClient('${cl.id}')"><div class="av av-c">${ini(cl.name)}</div><span class="iname">${cl.name}</span><span class="badge">${(S.pods[cl.id]||[]).length}</span></div>`).join('')}
-    <button class="add-btn" onclick="addClient()">+ Add client</button></div>
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Clients (${S.clients.length})</div>
+    ${S.clients.map(cl=>`<div class="si2 ${cl.id===S.selClient?'sel':''}" onclick="selC('${cl.id}')"><div class="av av-c">${ini(cl.name)}</div><span class="in">${cl.name}</span><span class="bx">${(S.pods[cl.id]||[]).length}</span></div>`).join('')}
+    <button class="add-btn" onclick="addC()">+ Add client</button></div>
   </div><div class="content">${c?`
-    <div class="card"><div class="card-hdr"><div style="display:flex;align-items:center;gap:8px"><div class="av av-c" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</div><div class="card-title">${c.name}</div></div><button class="btn btn-d btn-sm" onclick="removeClient('${c.id}')">Delete</button></div>
-      <div class="legend"><div class="leg-i"><div class="leg-d" style="background:#9FE1CB"></div>Assigned</div><div class="leg-i"><div class="leg-d" style="background:#E1F5EE"></div>Scheduled</div></div>
-      <div class="scroll-x">${renderSchedGrid(c)}</div></div>
-    <div class="card"><div class="card-hdr"><div class="card-title">Pod members</div><span style="font-size:11px;color:#888">${pods.length} staff</span></div>
-      <p style="font-size:11px;color:#888;margin-bottom:.625rem">Click to add/remove (4-7 recommended)</p>
-      <div class="pod-grid">${S.staff.map(s=>{const inp=pods.includes(s.id);const sc=overlap(s.id,c.id);return`<div class="pod-m ${inp?'inp':''}" onclick="togglePod('${c.id}','${s.id}')"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(s.name)}</div><div><div style="font-size:11px;font-weight:500">${s.name}</div><div style="font-size:10px;color:#888">${sc} overlap</div></div>${inp?'<span style="color:#185FA5;font-size:12px;margin-left:auto">&#10003;</span>':''}</div>`;}).join('')}</div></div>
-  `:'<div class="empty-st">Select a client</div>'}</div></div>`;
-}
-function renderStaff(){
-  const s=gs(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">Staff (${S.staff.length})</div>
-    ${S.staff.map(st=>{const out=S.calledOut.includes(st.id);return`<div class="sb-item ${st.id===S.selStaff?'sel':''}" onclick="selStaff('${st.id}')"><div class="av av-s">${ini(st.name)}</div><span class="iname">${st.name}</span>${out?'<span class="dot-r" style="margin-right:2px"></span>':''}<span class="badge">${Object.entries(S.pods).filter(([,p])=>p.includes(st.id)).length}</span></div>`;}).join('')}
-    <button class="add-btn" onclick="addStaff()">+ Add staff</button></div>
-  </div><div class="content">${s?`
-    <div class="card"><div class="card-hdr"><div style="display:flex;align-items:center;gap:8px"><div class="av av-s" style="width:32px;height:32px;font-size:12px">${ini(s.name)}</div><div><div class="card-title">${s.name}</div><div style="font-size:11px;color:#888">${myC.length} client pods</div></div></div>
-      <div style="display:flex;gap:5px">${S.calledOut.includes(s.id)?`<button class="btn btn-sm" onclick="removeCallout('${s.id}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="markOut('${s.id}')">Call out</button>`}<button class="btn btn-d btn-sm" onclick="removeStaff('${s.id}')">Delete</button></div></div>
-      <div class="scroll-x">${renderAvailGrid(s)}</div></div>
-    <div class="card"><div class="card-hdr"><div class="card-title">Client pods</div></div>
-      ${myC.length===0?`<div style="font-size:12px;color:#888">Not in any pods yet</div>`
-        :myC.map(([cid])=>{const cl=gc(cid);if(!cl)return'';const sc=overlap(s.id,cid);return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${sc} overlap</span></div>`;}).join('')}
+    <div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px"><div class="av av-c" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</div><div class="ct">${c.name}</div></div><button class="btn btn-d btn-sm" onclick="rmC('${c.id}')">Delete</button></div>
+      <div class="lg"><div class="li"><div class="ld" style="background:#9FE1CB"></div>Assigned</div><div class="li"><div class="ld" style="background:#E1F5EE"></div>Scheduled</div></div>
+      <div class="sx">${rSG(c)}</div></div>
+    <div class="card"><div class="ch"><div class="ct">Pod members</div><span style="font-size:11px;color:#888">${pods.length} staff</span></div>
+      <p style="font-size:11px;color:#888;margin-bottom:.5rem">Click to add/remove (4-7 recommended)</p>
+      <div class="pg">${S.staff.map(s=>{const inp=pods.includes(s.id);const sc=overlap(s.id,c.id);return`<div class="pm ${inp?'ip':''}" onclick="togPod('${c.id}','${s.id}')"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(s.name)}</div><div><div style="font-size:11px;font-weight:500">${s.name}</div><div style="font-size:10px;color:#888">${sc}</div></div>${inp?'<span style="color:#185FA5;margin-left:auto">&#10003;</span>':''}</div>`;}).join('')}</div>
     </div>
-  `:'<div class="empty-st">Select a staff member</div>'}</div></div>`;
+  `:'<div class="es">Select a client</div>'}</div></div>`;
 }
-function renderPods(){
+function rStaff(){
+  const s=gs(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Staff (${S.staff.length})</div>
+    ${S.staff.map(st=>{const out=S.calledOut.includes(st.id);return`<div class="si2 ${st.id===S.selStaff?'sel':''}" onclick="selS('${st.id}')"><div class="av av-s">${ini(st.name)}</div><span class="in">${st.name}</span>${out?'<span class="dr"></span>':''}<span class="bx">${Object.entries(S.pods).filter(([,p])=>p.includes(st.id)).length}</span></div>`;}).join('')}
+    <button class="add-btn" onclick="addS()">+ Add staff</button></div>
+  </div><div class="content">${s?`
+    <div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px"><div class="av av-s" style="width:32px;height:32px;font-size:12px">${ini(s.name)}</div><div><div class="ct">${s.name}</div><div style="font-size:11px;color:#888">${myC.length} client pods</div></div></div>
+      <div style="display:flex;gap:5px">${S.calledOut.includes(s.id)?`<button class="btn btn-sm" onclick="rmCO('${s.id}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="mkOut('${s.id}')">Call out</button>`}<button class="btn btn-d btn-sm" onclick="rmS('${s.id}')">Delete</button></div></div>
+      <div class="sx">${rAG(s)}</div></div>
+    <div class="card"><div class="ch"><div class="ct">Client pods</div></div>
+      ${myC.length===0?`<div style="font-size:12px;color:#888">Not in any pods yet</div>`
+        :myC.map(([cid])=>{const cl=gc(cid);if(!cl)return'';return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(cl.name)}</div><span style="font-size:12px;flex:1">${cl.name}</span><span style="font-size:10px;color:#888">${overlap(s.id,cid)}</span></div>`;}).join('')}
+    </div>
+  `:'<div class="es">Select a staff member</div>'}</div></div>`;
+}
+function rPods(){
   return`<div style="width:100%;flex-direction:column" class="content"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem">All pods overview</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.875rem">
-      ${S.clients.map(c=>{const pod=S.pods[c.id]||[];const tot=pod.reduce((s,sid)=>s+overlap(sid,c.id),0);const ok=pod.length>=4&&pod.length<=7;
-        return`<div class="card" style="margin:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><div class="av av-c" style="width:28px;height:28px">${ini(c.name)}</div><div><div style="font-size:12px;font-weight:500">${c.name}</div><div style="font-size:10px;color:#888">${pod.length} staff · ${tot} overlap slots</div></div><span style="margin-left:auto;font-size:10px;padding:2px 7px;border-radius:8px;background:${ok?'#C0DD97':'#F5C4B3'};color:${ok?'#173404':'#4A1B0C'}">${ok?'Good':'Check: '+pod.length}</span></div>
-          ${pod.map(sid=>{const st=gs(sid);const out=S.calledOut.includes(sid);const sc=overlap(sid,c.id);return st?`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-s" style="width:20px;height:20px;font-size:8px">${ini(st.name)}</div><span style="font-size:11px;flex:1">${st.name}</span>${out?'<span class="dot-r"></span>':''}<span style="font-size:10px;color:#888">${sc}</span></div>`:'';}).join('')}
-        </div>`;}).join('')}
+    ${S.clients.map(c=>{const pod=S.pods[c.id]||[];const tot=pod.reduce((s,sid)=>s+overlap(sid,c.id),0);const ok=pod.length>=4&&pod.length<=7;
+      return`<div class="card" style="margin:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><div class="av av-c" style="width:28px;height:28px">${ini(c.name)}</div><div><div style="font-size:12px;font-weight:500">${c.name}</div><div style="font-size:10px;color:#888">${pod.length} staff</div></div><span style="margin-left:auto;font-size:10px;padding:2px 7px;border-radius:8px;background:${ok?'#C0DD97':'#F5C4B3'};color:${ok?'#173404':'#4A1B0C'}">${ok?'Good':'Check: '+pod.length}</span></div>
+        ${pod.map(sid=>{const st=gs(sid);const out=S.calledOut.includes(sid);return st?`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-s" style="width:20px;height:20px;font-size:8px">${ini(st.name)}</div><span style="font-size:11px;flex:1">${st.name}</span>${out?'<span class="dr"></span>':''}<span style="font-size:10px;color:#888">${overlap(sid,c.id)}</span></div>`:'';}).join('')}
+      </div>`;}).join('')}
     </div></div>`;
 }
-function renderCallout(){
+function rCallout(){
   const aff=[];
   if(S.calloutStaff){Object.entries(S.assignments).forEach(([cid,days])=>{Object.entries(days).forEach(([day,slots])=>{Object.entries(slots).forEach(([slot,sid])=>{if(sid===S.calloutStaff){const best=bestFor(cid,day,slot,S.calloutStaff);aff.push({cid,day,slot,best});}});});});}
   const grouped={};aff.forEach(a=>{const k=a.cid+'_'+a.day;if(!grouped[k])grouped[k]={cid:a.cid,day:a.day,slots:[],best:a.best};grouped[k].slots.push(a.slot);});
   const groups=Object.values(grouped);
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">Select staff</div>
-    ${S.staff.map(s=>{const out=S.calledOut.includes(s.id);return`<div class="sb-item ${S.calloutStaff===s.id?'sel':''}" onclick="selCallout('${s.id}')"><div class="av av-s">${ini(s.name)}</div><span class="iname">${s.name}</span>${out?'<span class="badge" style="background:#F5C4B3;color:#4A1B0C">Out</span>':''}</div>`;}).join('')}
-  </div></div><div class="content">${!S.calloutStaff?`<div class="empty-st">Select a staff member to see coverage options</div>`:`
-    <div class="co-banner"><div class="co-title">&#9888; Coverage needed: ${gs(S.calloutStaff)?.name}</div>
-      <div style="display:flex;gap:6px">${S.calledOut.includes(S.calloutStaff)?`<button class="btn btn-sm" onclick="removeCallout('${S.calloutStaff}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="markOut('${S.calloutStaff}')">Mark called out today</button>`}</div></div>
-    <div class="card"><div class="card-hdr"><div class="card-title">Affected sessions & coverage</div></div>
-      ${groups.length===0?`<div style="font-size:12px;color:#888">No assigned sessions found.</div>`
-        :groups.map(g=>{const c=gc(g.cid);const range=fmtSlotRange(g.slots);
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Select staff</div>
+    ${S.staff.map(s=>{const out=S.calledOut.includes(s.id);return`<div class="si2 ${S.calloutStaff===s.id?'sel':''}" onclick="selCO('${s.id}')"><div class="av av-s">${ini(s.name)}</div><span class="in">${s.name}</span>${out?'<span class="bx" style="background:#F5C4B3;color:#4A1B0C">Out</span>':''}</div>`;}).join('')}
+  </div></div><div class="content">${!S.calloutStaff?`<div class="es">Select a staff member to see coverage</div>`:`
+    <div class="cob"><div class="cot">&#9888; Coverage: ${gs(S.calloutStaff)?.name}</div>
+      <div style="display:flex;gap:6px">${S.calledOut.includes(S.calloutStaff)?`<button class="btn btn-sm" onclick="rmCO('${S.calloutStaff}')">Mark available</button>`:`<button class="btn btn-d btn-sm" onclick="mkOut('${S.calloutStaff}')">Mark called out</button>`}</div></div>
+    <div class="card"><div class="ch"><div class="ct">Affected sessions</div></div>
+      ${groups.length===0?`<div style="font-size:12px;color:#888">No assigned sessions.</div>`
+        :groups.map(g=>{const c=gc(g.cid);const range=fmtR(g.slots);
           return`<div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,.1)">
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(c?.name||'?')}</div><strong style="font-size:12px">${c?.name} — ${g.day} ${range}</strong></div>
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><div class="av av-c" style="width:22px;height:22px;font-size:8px">${ini(c?.name||'?')}</div><strong style="font-size:12px">${c?.name} - ${g.day} ${range}</strong></div>
             ${g.best.length===0?`<div style="font-size:11px;color:#D85A30">No pod members available</div>`
-              :g.best.slice(0,3).map((opt,i)=>{const st=gs(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best match':i===1?'Good':'Available';
-                return`<div class="cov-opt"><div style="display:flex;align-items:center;gap:7px"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(st?.name||'?')}</div><div><div style="font-size:12px;font-weight:500">${st?.name}</div><div style="font-size:10px;color:#888">${opt.score} overlap slots</div></div></div>
-                  <div style="display:flex;align-items:center;gap:6px"><span class="${tier}">${lbl}</span><button class="btn btn-p btn-sm" onclick="doReassignGroup('${g.cid}','${g.day}','${S.calloutStaff}')">Assign</button></div></div>`;}).join('')}
+              :g.best.slice(0,3).map((opt,i)=>{const st=gs(opt.sid);const tier=i===0?'mg':i===1?'mo':'mp';const lbl=i===0?'Best':i===1?'Good':'Available';
+                return`<div class="co2"><div style="display:flex;align-items:center;gap:7px"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(st?.name||'?')}</div><div><div style="font-size:12px;font-weight:500">${st?.name}</div><div style="font-size:10px;color:#888">${opt.score} overlap</div></div></div>
+                  <div style="display:flex;align-items:center;gap:6px"><span class="${tier}">${lbl}</span><button class="btn btn-p btn-sm" onclick="doRG('${g.cid}','${g.day}','${S.calloutStaff}','${opt.sid}')">Assign</button></div></div>`;}).join('')}
           </div>`;}).join('')}
     </div>
   `}</div></div>`;
 }
-function renderData(){
-  return`<div style="width:100%"><div class="sidebar"><div class="sb-sec"><div class="sb-lbl">What to edit</div>
-    <div class="sb-item ${S.edTab==='clients'?'sel':''}" onclick="setEdTab('clients')">Clients & schedules</div>
-    <div class="sb-item ${S.edTab==='staff'?'sel':''}" onclick="setEdTab('staff')">Staff & availability</div></div>
-    <div class="sb-sec"><div class="sb-lbl">How it works</div>
-      <div style="font-size:11px;color:#888;line-height:1.7">1. Click a day to select it<br>2. Click one time to start a range<br>3. Click another time to fill all slots between<br>4. Or toggle individual slots</div></div>
-    <div class="sb-sec"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
-  </div><div class="content">${S.edTab==='clients'?renderEditClients():renderEditStaff()}</div></div>`;
+function rData(){
+  return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">What to edit</div>
+    <div class="si2 ${S.edTab==='clients'?'sel':''}" onclick="setET('clients')">Clients & schedules</div>
+    <div class="si2 ${S.edTab==='staff'?'sel':''}" onclick="setET('staff')">Staff & availability</div></div>
+    <div class="ss"><div class="sl">How it works</div>
+      <div style="font-size:11px;color:#888;line-height:1.7">1. Click a day pill to select it (turns purple)<br>2. Click a time to start a range<br>3. Click another time to fill all 15-min slots in between<br>4. Click same time twice to toggle one slot</div></div>
+    <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
+  </div><div class="content">${S.edTab==='clients'?rEC():rES()}</div></div>`;
 }
-function renderEditClients(){
-  return`<div class="card"><div class="card-hdr"><div class="card-title">Clients</div>
-    <button class="btn btn-p btn-sm" onclick="addClient()">+ Add client</button></div>
-    ${S.clients.map(c=>{
-      const exp=S.expEdit===c.id;const activeDays=DAYS.filter(d=>(c.schedule[d]||[]).length>0);const totalSlots=activeDays.reduce((n,d)=>n+(c.schedule[d]||[]).length,0);const isRanging=S.rangeType==='client'&&S.rangeEntityId===c.id;
-      return`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0">
-        <div style="display:flex;align-items:center;gap:8px">
-          <input class="ie" value="${c.name}" onblur="renameClient('${c.id}',this.value)">
-          <span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} · ${totalSlots} slots</span>
-          <button class="btn btn-sm" onclick="toggleExp('${c.id}')">${exp?'Hide':'Edit schedule'}</button>
-          <button class="btn btn-d btn-sm" onclick="removeClient('${c.id}')">Delete</button>
-        </div>
-        ${exp?`<div class="exp-sec">
-          <h4>Select days</h4>
-          <div class="days-row">${DAYS.map(d=>{const on=activeDays.includes(d);return`<button class="day-pill ${on?'on':''}" onclick="toggleClientDay('${c.id}','${d}')">${d}</button>`;}).join('')}</div>
-          ${activeDays.length>0?`
-            ${isRanging&&S.rangeStart?`<div class="range-hint">Range started at ${S.rangeStart} — click an end time to fill</div>`:'<div style="font-size:11px;color:#888;margin-top:.5rem">Click a time to start a range, click another to fill all slots between them</div>'}
-            ${activeDays.map(d=>{const sel=new Set(c.schedule[d]||[]);const allOn=TIMES.every(t=>sel.has(t));
-              return`<div class="hrs-block"><div class="hrs-block-hdr"><span class="hrs-block-day">${d}</span><span class="hrs-block-count">${sel.size} slots</span><span class="sel-link" onclick="${allOn?`clearClientDay('${c.id}','${d}')` : `selAllClientDay('${c.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div>
-                <div class="hrs-grid">${TIMES.map(t=>{const on=sel.has(t);const isStart=isRanging&&S.rangeStart===t&&S.rangeDay===d;return`<button class="hchip ${on?'on':''} ${isStart?'range-preview':''}" onclick="clickClientTime('${c.id}','${d}','${t}')">${t}</button>`;}).join('')}</div>
-              </div>`;}).join('')}
-          `:'<div style="font-size:12px;color:#888;margin-top:.5rem">Select at least one day above.</div>'}
-        </div>`:''}
-      </div>`;}).join('')}
-  </div>`;
+function rEC(){
+  let h=`<div class="card"><div class="ch"><div class="ct">Clients</div><button class="btn btn-p btn-sm" onclick="addC()">+ Add</button></div>`;
+  S.clients.forEach(c=>{
+    const exp=S.expEdit===c.id;
+    // KEY FIX: use selDaysC which persists regardless of slot count
+    const selDays=S.selDaysC[c.id]||new Set();
+    const activeDays=DAYS.filter(d=>selDays.has(d));
+    const totalSlots=activeDays.reduce((n,d)=>n+(c.schedule[d]||[]).length,0);
+    const isR=S.rType==='client'&&S.rEid===c.id;
+    h+=`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input class="ie" value="${c.name}" onblur="rnC('${c.id}',this.value)">
+        <span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} &middot; ${totalSlots} slots</span>
+        <button class="btn btn-sm" onclick="togExp('${c.id}')">${exp?'Hide':'Edit schedule'}</button>
+        <button class="btn btn-d btn-sm" onclick="rmC('${c.id}')">Del</button>
+      </div>`;
+    if(exp){
+      h+=`<div class="exs"><h4>Select days</h4><div class="dr2">`;
+      DAYS.forEach(d=>{
+        const on=selDays.has(d);
+        h+=`<button class="dp${on?' on':''}" onclick="togCD('${c.id}','${d}')">${d}</button>`;
+      });
+      h+=`</div>`;
+      if(activeDays.length>0){
+        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time to fill</div>`:`<div class="it">Click a time to start a range, click another to fill all slots between.</div>`;
+        activeDays.forEach(d=>{
+          const sel=new Set(c.schedule[d]||[]);const allOn=TIMES.every(t=>sel.has(t));
+          h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots</span><span class="slnk" onclick="${allOn?`clrCD('${c.id}','${d}')`:` saCD('${c.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;
+          TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkCT('${c.id}','${d}','${t}')">${t}</button>`;});
+          h+=`</div></div>`;
+        });
+      } else {
+        h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+'</div>';
 }
-function renderEditStaff(){
-  return`<div class="card"><div class="card-hdr"><div class="card-title">Staff</div>
-    <button class="btn btn-p btn-sm" onclick="addStaff()">+ Add staff</button></div>
-    ${S.staff.map(s=>{
-      const exp=S.expEdit===s.id;const activeDays=DAYS.filter(d=>(s.availability[d]||[]).length>0);const totalSlots=activeDays.reduce((n,d)=>n+(s.availability[d]||[]).length,0);const isRanging=S.rangeType==='staff'&&S.rangeEntityId===s.id;
-      return`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0">
-        <div style="display:flex;align-items:center;gap:8px">
-          <input class="ie" value="${s.name}" onblur="renameStaff('${s.id}',this.value)">
-          <span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} · ${totalSlots} slots</span>
-          <button class="btn btn-sm" onclick="toggleExp('${s.id}')">${exp?'Hide':'Edit availability'}</button>
-          <button class="btn btn-d btn-sm" onclick="removeStaff('${s.id}')">Delete</button>
-        </div>
-        ${exp?`<div class="exp-sec">
-          <h4>Select days</h4>
-          <div class="days-row">${DAYS.map(d=>{const on=activeDays.includes(d);return`<button class="day-pill ${on?'on':''}" onclick="toggleStaffDay('${s.id}','${d}')">${d}</button>`;}).join('')}</div>
-          ${activeDays.length>0?`
-            ${isRanging&&S.rangeStart?`<div class="range-hint">Range started at ${S.rangeStart} — click an end time to fill</div>`:'<div style="font-size:11px;color:#888;margin-top:.5rem">Click a time to start a range, click another to fill all slots between them</div>'}
-            ${activeDays.map(d=>{const sel=new Set(s.availability[d]||[]);const allOn=TIMES.every(t=>sel.has(t));
-              return`<div class="hrs-block"><div class="hrs-block-hdr"><span class="hrs-block-day">${d}</span><span class="hrs-block-count">${sel.size} slots</span><span class="sel-link" onclick="${allOn?`clearStaffDay('${s.id}','${d}')` : `selAllStaffDay('${s.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div>
-                <div class="hrs-grid">${TIMES.map(t=>{const on=sel.has(t);const isStart=isRanging&&S.rangeStart===t&&S.rangeDay===d;return`<button class="hchip ${on?'on':''} ${isStart?'range-preview':''}" onclick="clickStaffTime('${s.id}','${d}','${t}')">${t}</button>`;}).join('')}</div>
-              </div>`;}).join('')}
-          `:'<div style="font-size:12px;color:#888;margin-top:.5rem">Select at least one day above.</div>'}
-        </div>`:''}
-      </div>`;}).join('')}
-  </div>`;
+function rES(){
+  let h=`<div class="card"><div class="ch"><div class="ct">Staff</div><button class="btn btn-p btn-sm" onclick="addS()">+ Add</button></div>`;
+  S.staff.forEach(s=>{
+    const exp=S.expEdit===s.id;
+    const selDays=S.selDaysS[s.id]||new Set();
+    const activeDays=DAYS.filter(d=>selDays.has(d));
+    const totalSlots=activeDays.reduce((n,d)=>n+(s.availability[d]||[]).length,0);
+    const isR=S.rType==='staff'&&S.rEid===s.id;
+    h+=`<div style="border-bottom:0.5px solid rgba(0,0,0,.1);padding:10px 0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input class="ie" value="${s.name}" onblur="rnS('${s.id}',this.value)">
+        <span style="font-size:11px;color:#888;white-space:nowrap">${activeDays.join(', ')||'No days'} &middot; ${totalSlots} slots</span>
+        <button class="btn btn-sm" onclick="togExp('${s.id}')">${exp?'Hide':'Edit availability'}</button>
+        <button class="btn btn-d btn-sm" onclick="rmS('${s.id}')">Del</button>
+      </div>`;
+    if(exp){
+      h+=`<div class="exs"><h4>Select days</h4><div class="dr2">`;
+      DAYS.forEach(d=>{const on=selDays.has(d);h+=`<button class="dp${on?' on':''}" onclick="togSD('${s.id}','${d}')">${d}</button>`;});
+      h+=`</div>`;
+      if(activeDays.length>0){
+        h+=isR&&S.rStart?`<div class="rh">Range started at <strong>${S.rStart}</strong> on <strong>${S.rDay}</strong> — click an end time</div>`:`<div class="it">Click a time to start a range, click another to fill all slots between.</div>`;
+        activeDays.forEach(d=>{
+          const sel=new Set(s.availability[d]||[]);const allOn=TIMES.every(t=>sel.has(t));
+          h+=`<div class="hb"><div class="hbh"><span class="hbd">${d}</span><span class="hbc">${sel.size} slots</span><span class="slnk" onclick="${allOn?`clrSD('${s.id}','${d}')`:` saSD('${s.id}','${d}')`}">${allOn?'Clear all':'Select all'}</span></div><div class="hg">`;
+          TIMES.forEach(t=>{const on=sel.has(t);const isS=isR&&S.rStart===t&&S.rDay===d;h+=`<button class="hc${on?' on':''}${isS?' rp':''}" onclick="clkST('${s.id}','${d}','${t}')">${t}</button>`;});
+          h+=`</div></div>`;
+        });
+      } else {
+        h+=`<div class="it" style="margin-top:.5rem">Click a day above to start adding times.</div>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h+'</div>';
 }
-function renderSave(){
+function rSave(){
   const hs=!!S.lastSaved;const sd=S.lastSaved?new Date(S.lastSaved).toLocaleString():null;
   return`<div style="width:100%;flex-direction:column" class="content">
-    <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">Save & Load Data</h2>
-    <div class="save-panel"><h3>Browser storage (auto-save)</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Saves in this browser. Persists between sessions as long as you use the same browser.${hs?`<div style="margin-top:5px;color:#1D9E75;font-size:11px">Last saved: ${sd}</div>`:''}${S.dirty?`<div style="margin-top:5px;color:#EF9F27;font-size:11px">Unsaved changes</div>`:''}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-g" onclick="doSave()">Save to browser now</button>${hs?`<button class="btn" onclick="loadStorage()">Reload saved</button>`:''}</div></div>
-    <div class="save-panel"><h3>Download JSON backup</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Downloads a .json backup file. Save to Google Drive or desktop. Use to restore or move to another device.</div>
+    <h2 style="font-size:15px;font-weight:500;margin-bottom:1.25rem">Save &amp; Load</h2>
+    <div class="sp"><h3>Browser storage</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Saves in this browser between sessions.${hs?`<br><span style="color:#1D9E75">Last saved: ${sd}</span>`:''}${S.dirty?`<br><span style="color:#EF9F27">Unsaved changes</span>`:''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-g" onclick="doSave()">Save now</button>${hs?`<button class="btn" onclick="ldStorage()">Reload saved</button>`:''}</div></div>
+    <div class="sp"><h3>Export to Excel / CSV</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Downloads a CSV file you can open directly in Excel or Google Sheets.</div>
+      <button class="btn btn-p" onclick="exportCSV()">Export to Excel/CSV</button></div>
+    <div class="sp"><h3>Download JSON backup</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Full data backup. Restore it on any device or browser.</div>
       <button class="btn btn-p" onclick="exportJSON()">Download .json backup</button></div>
-    <div class="save-panel"><h3>Export to Excel/CSV</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Exports your schedule, pods, and availability as a CSV file you can open in Excel or Google Sheets.</div>
-      <button class="btn btn-p" onclick="exportXLSX()">Export to Excel/CSV</button></div>
-    <div class="save-panel"><h3>Load from JSON file</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Restore from a previously downloaded JSON backup.</div>
+    <div class="sp"><h3>Load from JSON file</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Restore from a previously downloaded backup.</div>
       <button class="btn" onclick="importJSON()">Load from .json file</button></div>
-    <div class="save-panel" style="border-color:#F0997B"><h3>Reset to sample data</h3>
-      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Wipes everything and restores sample data. Cannot be undone.</div>
+    <div class="sp" style="border-color:#F0997B"><h3>Reset to sample data</h3>
+      <div style="font-size:12px;color:#888;margin-bottom:.875rem;line-height:1.6">Wipes everything. Cannot be undone.</div>
       <button class="btn btn-d" onclick="resetData()">Reset to sample data</button></div>
   </div>`;
 }
-function renderSchedGrid(c){
+function rSG(c){
   let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;
-  DAYS.forEach(d=>{h+=`<div class="day-hdr">${d}</div>`;});
-  TIMES.forEach(t=>{const isHour=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="time-lbl">${isHour?t:''}</div>`;
-    DAYS.forEach(d=>{const sched=(c.schedule[d]||[]).includes(t);const asgn=getAsgn(c.id,d,t);let cls='';if(asgn){cls='assigned';}else if(sched){cls='sched';}
-      h+=`<div class="scell ${cls||'empty'}" onclick="toggleClientSlot('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' - '+gs(asgn)?.name:''}"></div>`;});});
+  DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});
+  TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;
+    DAYS.forEach(d=>{const sch=(c.schedule[d]||[]).includes(t);const asgn=gA(c.id,d,t);let cls='';if(asgn)cls='assigned';else if(sch)cls='sched';
+      h+=`<div class="sc ${cls||'empty'}" onclick="togCS('${c.id}','${d}','${t}')" title="${d} ${t}${asgn?' - '+gs(asgn)?.name:''}"></div>`;});});
   return h+'</div>';
 }
-function renderAvailGrid(s){
+function rAG(s){
   let h=`<div class="sgrid" style="grid-template-columns:72px repeat(5,1fr)"><div></div>`;
-  DAYS.forEach(d=>{h+=`<div class="day-hdr">${d}</div>`;});
-  TIMES.forEach(t=>{const isHour=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="time-lbl">${isHour?t:''}</div>`;
-    DAYS.forEach(d=>{const av=(s.availability[d]||[]).includes(t);h+=`<div class="scell ${av?'avail':'empty'}" onclick="toggleStaffSlot('${s.id}','${d}','${t}')"></div>`;});});
+  DAYS.forEach(d=>{h+=`<div class="dh">${d}</div>`;});
+  TIMES.forEach(t=>{const isH=t.endsWith(':00 AM')||t.endsWith(':00 PM');h+=`<div class="tl">${isH?t:''}</div>`;
+    DAYS.forEach(d=>{const av=(s.availability[d]||[]).includes(t);h+=`<div class="sc ${av?'avail':'empty'}" onclick="togSS('${s.id}','${d}','${t}')"></div>`;});});
   return h+'</div>';
 }
-function clickClientTime(cid,day,time){
-  const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];
-  if(S.rangeType==='client'&&S.rangeEntityId===cid&&S.rangeStart&&S.rangeDay===day){
-    const lo=Math.min(timeToMin(S.rangeStart),timeToMin(time));const hi=Math.max(timeToMin(S.rangeStart),timeToMin(time));
-    const inRange=TIMES.filter(t=>timeToMin(t)>=lo&&timeToMin(t)<=hi);const sel=new Set(c.schedule[day]);inRange.forEach(t=>sel.add(t));c.schedule[day]=[...sel];
-    S.rangeStart=null;S.rangeDay=null;S.rangeType=null;S.rangeEntityId=null;markDirty();render();
-  } else if(S.rangeType==='client'&&S.rangeEntityId===cid&&S.rangeStart===time&&S.rangeDay===day){
-    const sel=new Set(c.schedule[day]);if(sel.has(time))sel.delete(time);else sel.add(time);c.schedule[day]=[...sel];
-    S.rangeStart=null;S.rangeDay=null;S.rangeType=null;S.rangeEntityId=null;markDirty();render();
-  } else {S.rangeStart=time;S.rangeDay=day;S.rangeType='client';S.rangeEntityId=cid;render();}
-}
-function clickStaffTime(sid,day,time){
-  const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];
-  if(S.rangeType==='staff'&&S.rangeEntityId===sid&&S.rangeStart&&S.rangeDay===day){
-    const lo=Math.min(timeToMin(S.rangeStart),timeToMin(time));const hi=Math.max(timeToMin(S.rangeStart),timeToMin(time));
-    const inRange=TIMES.filter(t=>timeToMin(t)>=lo&&timeToMin(t)<=hi);const sel=new Set(s.availability[day]);inRange.forEach(t=>sel.add(t));s.availability[day]=[...sel];
-    S.rangeStart=null;S.rangeDay=null;S.rangeType=null;S.rangeEntityId=null;markDirty();render();
-  } else if(S.rangeType==='staff'&&S.rangeEntityId===sid&&S.rangeStart===time&&S.rangeDay===day){
-    const sel=new Set(s.availability[day]);if(sel.has(time))sel.delete(time);else sel.add(time);s.availability[day]=[...sel];
-    S.rangeStart=null;S.rangeDay=null;S.rangeType=null;S.rangeEntityId=null;markDirty();render();
-  } else {S.rangeStart=time;S.rangeDay=day;S.rangeType='staff';S.rangeEntityId=sid;render();}
-}
-function selClient(id){S.selClient=id;render();}function selStaff(id){S.selStaff=id;render();}function selCallout(id){S.calloutStaff=id;render();}function setEdTab(t){S.edTab=t;S.expEdit=null;S.rangeStart=null;render();}
-function toggleExp(id){S.expEdit=S.expEdit===id?null:id;if(S.expEdit!==id)S.rangeStart=null;render();}
-function togglePod(cid,sid){if(!S.pods[cid])S.pods[cid]=[];const i=S.pods[cid].indexOf(sid);if(i>=0)S.pods[cid].splice(i,1);else S.pods[cid].push(sid);markDirty();render();}
-function toggleClientSlot(cid,day,slot){const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];const i=c.schedule[day].indexOf(slot);if(i>=0){c.schedule[day].splice(i,1);delAsgn(cid,day,slot);}else{c.schedule[day].push(slot);const best=bestFor(cid,day,slot,null);if(best.length>0)setAsgn(cid,day,slot,best[0].sid);}markDirty();render();}
-function toggleStaffSlot(sid,day,slot){const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];const i=s.availability[day].indexOf(slot);if(i>=0)s.availability[day].splice(i,1);else s.availability[day].push(slot);markDirty();render();}
-function toggleClientDay(cid,day){const c=gc(cid);if(!c)return;if((c.schedule[day]||[]).length>0){delete c.schedule[day];}else{c.schedule[day]=[];}S.rangeStart=null;S.rangeDay=null;markDirty();render();}
-function toggleStaffDay(sid,day){const s=gs(sid);if(!s)return;if((s.availability[day]||[]).length>0){delete s.availability[day];}else{s.availability[day]=[];}S.rangeStart=null;S.rangeDay=null;markDirty();render();}
-function selAllClientDay(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[...TIMES];markDirty();render();}
-function clearClientDay(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[];markDirty();render();}
-function selAllStaffDay(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[...TIMES];markDirty();render();}
-function clearStaffDay(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[];markDirty();render();}
-function renameClient(id,val){if(val.trim()){const c=gc(id);if(c)c.name=val.trim();markDirty();render();}}
-function renameStaff(id,val){if(val.trim()){const s=gs(id);if(s)s.name=val.trim();markDirty();render();}}
-function markCallout(){const sel=document.getElementById('co-sel');if(!sel?.value)return;const sid=sel.value;if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
-function markOut(sid){if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
-function removeCallout(sid){S.calledOut=S.calledOut.filter(s=>s!==sid);render();}
-function goCallout(cid){const co=S.calledOut[0];if(co)S.calloutStaff=co;switchTab('callout');}
-function quickAsgn(cid,day){const c=gc(cid);if(!c)return;(c.schedule[day]||[]).forEach(slot=>{if(!getAsgn(cid,day,slot)){const best=bestFor(cid,day,slot,null);if(best.length>0)setAsgn(cid,day,slot,best[0].sid);}});markDirty();render();}
-function doReassignGroup(cid,day,oldSid){
+
+/* ---- Actions ---- */
+function selC(id){S.selClient=id;render();}
+function selS(id){S.selStaff=id;render();}
+function selCO(id){S.calloutStaff=id;render();}
+function setET(t){S.edTab=t;S.expEdit=null;S.rStart=null;render();}
+function togExp(id){S.expEdit=S.expEdit===id?null:id;if(S.expEdit!==id)S.rStart=null;render();}
+function togPod(cid,sid){if(!S.pods[cid])S.pods[cid]=[];const i=S.pods[cid].indexOf(sid);if(i>=0)S.pods[cid].splice(i,1);else S.pods[cid].push(sid);markDirty();render();}
+function togCS(cid,day,slot){const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];const i=c.schedule[day].indexOf(slot);if(i>=0){c.schedule[day].splice(i,1);dA(cid,day,slot);}else{c.schedule[day].push(slot);const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}markDirty();render();}
+function togSS(sid,day,slot){const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];const i=s.availability[day].indexOf(slot);if(i>=0)s.availability[day].splice(i,1);else s.availability[day].push(slot);markDirty();render();}
+
+/* KEY FIX: toggleClientDay uses selDaysC, not schedule presence */
+function togCD(cid,day){
   const c=gc(cid);if(!c)return;
-  const best=[];(c.schedule[day]||[]).forEach(slot=>{if(getAsgn(cid,day,slot)===oldSid){const b=bestFor(cid,day,slot,oldSid);if(b.length>0&&!best.find(x=>x.sid===b[0].sid))best.push(b[0]);}});
-  if(!best.length){showToast('No available pod members',true);return;}
-  const newSid=best[0].sid;
-  (c.schedule[day]||[]).forEach(slot=>{if(getAsgn(cid,day,slot)===oldSid){setAsgn(cid,day,slot,newSid);Object.entries(S.assignments).forEach(([oc,days])=>{if(oc===cid)return;if(days[day]&&days[day][slot]===newSid)delete days[day][slot];});}});
+  if(!S.selDaysC[cid])S.selDaysC[cid]=new Set();
+  const sel=S.selDaysC[cid];
+  if(sel.has(day)){
+    sel.delete(day);
+    delete c.schedule[day];
+  } else {
+    sel.add(day);
+    if(!c.schedule[day])c.schedule[day]=[];
+  }
+  if(S.rEid===cid){S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;}
   markDirty();render();
 }
-function addClient(){const name=prompt('New client name:');if(!name?.trim())return;const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});S.pods[id]=[];S.selClient=id;markDirty();render();}
-function addStaff(){const name=prompt('New staff name:');if(!name?.trim())return;const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});S.selStaff=id;markDirty();render();}
-function removeClient(id){if(!confirm('Remove this client?'))return;S.clients=S.clients.filter(c=>c.id!==id);delete S.pods[id];delete S.assignments[id];S.selClient=S.clients[0]?.id||null;markDirty();render();}
-function removeStaff(id){if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});Object.values(S.assignments).forEach(days=>{Object.values(days).forEach(slots=>{Object.keys(slots).forEach(sl=>{if(slots[sl]===id)delete slots[sl];});});});S.calledOut=S.calledOut.filter(s=>s!==id);S.selStaff=S.staff[0]?.id||null;markDirty();render();}
-function loadStorage(){const ok=tryLoad();if(ok){render();showToast('Loaded',false);}else showToast('No saved data',true);}
+function togSD(sid,day){
+  const s=gs(sid);if(!s)return;
+  if(!S.selDaysS[sid])S.selDaysS[sid]=new Set();
+  const sel=S.selDaysS[sid];
+  if(sel.has(day)){
+    sel.delete(day);
+    delete s.availability[day];
+  } else {
+    sel.add(day);
+    if(!s.availability[day])s.availability[day]=[];
+  }
+  if(S.rEid===sid){S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;}
+  markDirty();render();
+}
+
+function clkCT(cid,day,time){
+  const c=gc(cid);if(!c)return;if(!c.schedule[day])c.schedule[day]=[];
+  if(S.rType==='client'&&S.rEid===cid&&S.rStart&&S.rDay===day){
+    const lo=Math.min(t2m(S.rStart),t2m(time));const hi=Math.max(t2m(S.rStart),t2m(time));
+    const inR=TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<=hi);const sel=new Set(c.schedule[day]);inR.forEach(t=>sel.add(t));c.schedule[day]=[...sel];
+    S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
+  } else if(S.rType==='client'&&S.rEid===cid&&S.rStart===time&&S.rDay===day){
+    const sel=new Set(c.schedule[day]);if(sel.has(time))sel.delete(time);else sel.add(time);c.schedule[day]=[...sel];
+    S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
+  } else {S.rStart=time;S.rDay=day;S.rType='client';S.rEid=cid;render();}
+}
+function clkST(sid,day,time){
+  const s=gs(sid);if(!s)return;if(!s.availability[day])s.availability[day]=[];
+  if(S.rType==='staff'&&S.rEid===sid&&S.rStart&&S.rDay===day){
+    const lo=Math.min(t2m(S.rStart),t2m(time));const hi=Math.max(t2m(S.rStart),t2m(time));
+    const inR=TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<=hi);const sel=new Set(s.availability[day]);inR.forEach(t=>sel.add(t));s.availability[day]=[...sel];
+    S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
+  } else if(S.rType==='staff'&&S.rEid===sid&&S.rStart===time&&S.rDay===day){
+    const sel=new Set(s.availability[day]);if(sel.has(time))sel.delete(time);else sel.add(time);s.availability[day]=[...sel];
+    S.rStart=null;S.rDay=null;S.rType=null;S.rEid=null;markDirty();render();
+  } else {S.rStart=time;S.rDay=day;S.rType='staff';S.rEid=sid;render();}
+}
+
+function saCD(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[...TIMES];markDirty();render();}
+function clrCD(cid,day){const c=gc(cid);if(!c)return;c.schedule[day]=[];markDirty();render();}
+function saSD(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[...TIMES];markDirty();render();}
+function clrSD(sid,day){const s=gs(sid);if(!s)return;s.availability[day]=[];markDirty();render();}
+function rnC(id,val){if(val.trim()){const c=gc(id);if(c)c.name=val.trim();markDirty();render();}}
+function rnS(id,val){if(val.trim()){const s=gs(id);if(s)s.name=val.trim();markDirty();render();}}
+function mkCO(){const sel=document.getElementById('co-sel');if(!sel?.value)return;const sid=sel.value;if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
+function mkOut(sid){if(!S.calledOut.includes(sid))S.calledOut.push(sid);render();}
+function rmCO(sid){S.calledOut=S.calledOut.filter(s=>s!==sid);render();}
+function goCallout2(cid){const co=S.calledOut[0];if(co)S.calloutStaff=co;go('callout');}
+function qA(cid,day){const c=gc(cid);if(!c)return;(c.schedule[day]||[]).forEach(slot=>{if(!gA(cid,day,slot)){const b=bestFor(cid,day,slot,null);if(b.length>0)sA(cid,day,slot,b[0].sid);}});markDirty();render();}
+function doRG(cid,day,oldSid,newSid){
+  const c=gc(cid);if(!c)return;
+  (c.schedule[day]||[]).forEach(slot=>{if(gA(cid,day,slot)===oldSid){sA(cid,day,slot,newSid);Object.entries(S.assignments).forEach(([oc,days])=>{if(oc===cid)return;if(days[day]&&days[day][slot]===newSid)delete days[day][slot];});}});
+  markDirty();render();
+}
+function addC(){
+  const name=prompt('New client name:');if(!name?.trim())return;
+  const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});
+  S.pods[id]=[];S.selDaysC[id]=new Set();S.selClient=id;markDirty();render();
+}
+function addS(){
+  const name=prompt('New staff name:');if(!name?.trim())return;
+  const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});
+  S.selDaysS[id]=new Set();S.selStaff=id;markDirty();render();
+}
+function rmC(id){if(!confirm('Remove this client?'))return;S.clients=S.clients.filter(c=>c.id!==id);delete S.pods[id];delete S.assignments[id];delete S.selDaysC[id];S.selClient=S.clients[0]?.id||null;markDirty();render();}
+function rmS(id){
+  if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);
+  Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});
+  Object.values(S.assignments).forEach(days=>{Object.values(days).forEach(slots=>{Object.keys(slots).forEach(sl=>{if(slots[sl]===id)delete slots[sl];});});});
+  S.calledOut=S.calledOut.filter(s=>s!==id);delete S.selDaysS[id];S.selStaff=S.staff[0]?.id||null;markDirty();render();
+}
+function ldStorage(){const ok=tryLoad();if(ok){render();showToast('Loaded',false);}else showToast('No saved data',true);}
+
 function render(){
   const mc=document.getElementById('mc');if(!mc)return;
   const block=['pods','data','save'];mc.style.display=block.includes(S.tab)?'block':'flex';
-  if(S.tab==='today')mc.innerHTML=renderToday();
-  else if(S.tab==='week')mc.innerHTML=renderWeek();
-  else if(S.tab==='clients')mc.innerHTML=renderClients();
-  else if(S.tab==='staff')mc.innerHTML=renderStaff();
-  else if(S.tab==='pods')mc.innerHTML=renderPods();
-  else if(S.tab==='callout')mc.innerHTML=renderCallout();
-  else if(S.tab==='data')mc.innerHTML=renderData();
-  else if(S.tab==='save')mc.innerHTML=renderSave();
+  if(S.tab==='today')mc.innerHTML=rToday();
+  else if(S.tab==='week')mc.innerHTML=rWeek();
+  else if(S.tab==='clients')mc.innerHTML=rClients();
+  else if(S.tab==='staff')mc.innerHTML=rStaff();
+  else if(S.tab==='pods')mc.innerHTML=rPods();
+  else if(S.tab==='callout')mc.innerHTML=rCallout();
+  else if(S.tab==='data')mc.innerHTML=rData();
+  else if(S.tab==='save')mc.innerHTML=rSave();
   updSI();
 }
 tryLoad();render();
 </script>
 </body>
 </html>
-HTMLEOF
-echo "HTML file created: $(wc -c < /mnt/user-data/outputs/PodScheduler.html) bytes"
