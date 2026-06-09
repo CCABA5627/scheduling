@@ -238,7 +238,7 @@ let S={
   ...JSON.parse(JSON.stringify(DD)),
   selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],
   edTab:'clients',expEdit:null,
-  dirty:false,lastSaved:null
+  dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null
 };
 S.selDaysS=initSDS(S.staff);
 
@@ -629,7 +629,9 @@ function rWeek(){
 function rClients(){
   const c=gcN(S.selClient);const pods=S.pods[S.selClient]||[];
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Clients (${S.clients.length})</div>
-    ${S.clients.map(cl=>`<div class="si2 ${cl.id===S.selClient?'sel':''}" onclick="selC('${cl.id}')"><div class="av av-c">${ini(cl.name)}</div><span class="nm">${cl.name}</span><span class="bx">${(S.pods[cl.id]||[]).length}</span></div>`).join('')}
+    <select style="margin-bottom:6px" onchange="selC(this.value)">
+      ${S.clients.map(cl=>`<option value="${cl.id}"${cl.id===S.selClient?'selected':''}>${cl.name}</option>`).join('')}
+    </select>
     <button class="add-btn" onclick="addC()">+ Add client</button></div>
   </div><div class="content">${c?`
     <div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px"><div class="av av-c" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</div><div class="ct">${c.name}</div></div><button class="btn btn-d btn-sm" onclick="rmC('${c.id}')">Delete</button></div>
@@ -686,7 +688,9 @@ function rBlockBuilder(c){
 function rStaff(){
   const s=gsN(S.selStaff);const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selStaff));
   return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Staff (${S.staff.length})</div>
-    ${S.staff.map(st=>{const out=S.calledOut.includes(st.id);return`<div class="si2 ${st.id===S.selStaff?'sel':''}" onclick="selS('${st.id}')"><div class="av av-s">${ini(st.name)}</div><span class="nm">${st.name}</span>${out?'<span class="dr"></span>':''}<span class="bx">${Object.entries(S.pods).filter(([,p])=>p.includes(st.id)).length}</span></div>`;}).join('')}
+    <select style="margin-bottom:6px" onchange="selS(this.value)">
+      ${S.staff.map(st=>{const out=S.calledOut.includes(st.id);return`<option value="${st.id}"${st.id===S.selStaff?'selected':''}>${st.name}${out?' (out)':''} — ${Object.entries(S.pods).filter(([,p])=>p.includes(st.id)).length} pods</option>`;}).join('')}
+    </select>
     <button class="add-btn" onclick="addS()">+ Add staff</button></div>
   </div><div class="content">${s?`
     <div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px"><div class="av av-s" style="width:32px;height:32px;font-size:12px">${ini(s.name)}</div><div><div class="ct">${s.name}</div><div style="font-size:11px;color:#888">${myC.length} client pods</div></div></div>
@@ -700,13 +704,128 @@ function rStaff(){
 }
 
 function rPods(){
-  return`<div style="width:100%;flex-direction:column" class="content"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem">All pods overview</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.875rem">
-    ${S.clients.map(c=>{const pod=S.pods[c.id]||[];const ok=pod.length>=4&&pod.length<=7;
-      return`<div class="card" style="margin:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><div class="av av-c" style="width:28px;height:28px">${ini(c.name)}</div><div><div style="font-size:12px;font-weight:500">${c.name}</div><div style="font-size:10px;color:#888">${pod.length} staff</div></div><span style="margin-left:auto;font-size:10px;padding:2px 7px;border-radius:8px;background:${ok?'#C0DD97':'#F5C4B3'};color:${ok?'#173404':'#4A1B0C'}">${ok?'Good':'Check: '+pod.length}</span></div>
-        ${pod.map(sid=>{const st=gsN(sid);const out=S.calledOut.includes(sid);return st?`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,.1)"><div class="av av-s" style="width:20px;height:20px;font-size:8px">${ini(st.name)}</div><span style="font-size:11px;flex:1">${st.name}</span>${out?'<span class="dr"></span>':''}<span style="font-size:10px;color:#888">${overlap(sid,c.id)}</span></div>`:'';}).join('')}
-      </div>`;}).join('')}
-    </div></div>`;
+  const view=S.podView||'clients';
+  const toggleBtns=`<div style="display:flex;gap:6px;margin-bottom:1.25rem">
+    <button class="btn${view==='clients'?' btn-p':''}" onclick="S.podView='clients';render()">Client pods</button>
+    <button class="btn${view==='staff'?' btn-p':''}" onclick="S.podView='staff';render()">Staff pods</button>
+  </div>`;
+
+  // ── CLIENT PODS VIEW ──
+  if(view==='clients'){
+    if(!S.selPodClient&&S.clients.length)S.selPodClient=S.clients[0].id;
+    const selC=gcN(S.selPodClient);
+    const pod=S.pods[S.selPodClient]||[];
+    const clientOpts=S.clients.map(cl=>`<option value="${cl.id}"${cl.id===S.selPodClient?'selected':''}>${cl.name}</option>`).join('');
+    const podHtml=pod.length===0
+      ?`<div style="font-size:12px;color:#888;padding:.5rem 0">No staff in this pod yet.</div>`
+      :pod.map(sid=>{const st=gsN(sid);if(!st)return'';const out=S.calledOut.includes(sid);const sc=overlap(sid,S.selPodClient);
+        return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,.08)">
+          <div class="av av-s" style="width:28px;height:28px">${ini(st.name)}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">${st.name}</div><div style="font-size:11px;color:#888">${sc} overlap${out?' · <span style="color:#E24B4A">out today</span>':''}</div></div>
+          <button class="btn btn-d btn-sm" onclick="removePodMember('${S.selPodClient}','${sid}')">Remove</button>
+        </div>`;}).join('');
+    const notInPod=S.staff.filter(s=>!pod.includes(s.id));
+    const addOpts=notInPod.length?notInPod.map(s=>`<option value="${s.id}">${s.name}</option>`).join(''):`<option disabled>All staff in pod</option>`;
+    const ok=pod.length>=4&&pod.length<=7;
+
+    // All pods overview grid
+    const allPodsHtml=S.clients.map(c=>{
+      const p=S.pods[c.id]||[];const pok=p.length>=4&&p.length<=7;
+      const isSelected=c.id===S.selPodClient;
+      return`<div class="card" style="margin:0;cursor:pointer;${isSelected?'border-color:#534AB7;':''}outline:${isSelected?'2px solid #EEEDFE':'none'}" onclick="S.selPodClient='${c.id}';render()">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <div class="av av-c" style="width:26px;height:26px">${ini(c.name)}</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500">${c.name}</div><div style="font-size:10px;color:#888">${p.length} staff</div></div>
+          <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${pok?'#C0DD97':'#F5C4B3'};color:${pok?'#173404':'#4A1B0C'}">${pok?'Good':''+p.length}</span>
+        </div>
+        ${p.map(sid=>{const st=gsN(sid);const out=S.calledOut.includes(sid);return st?`<div style="display:flex;align-items:center;gap:5px;padding:3px 0;font-size:11px"><div class="av av-s" style="width:18px;height:18px;font-size:7px">${ini(st.name)}</div><span style="flex:1">${st.name}</span>${out?'<span style="color:#E24B4A;font-size:10px">out</span>':''}</div>`:'';}).join('')}
+      </div>`;}).join('');
+
+    return`<div style="width:100%;flex-direction:column" class="content">
+      ${toggleBtns}
+      <h3 style="font-size:13px;font-weight:500;color:#888;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">All client pods — click to manage</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:1.5rem">${allPodsHtml}</div>
+      <div class="card" style="max-width:560px">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.875rem;flex-wrap:wrap">
+          <div class="ct">Edit pod:</div>
+          <select style="flex:1;max-width:200px" onchange="S.selPodClient=this.value;render()">${clientOpts}</select>
+          <span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${ok?'#C0DD97':'#F5C4B3'};color:${ok?'#173404':'#4A1B0C'}">${ok?'✓ Good':'⚠ '+pod.length+' (aim 4–7)'}</span>
+        </div>
+        ${podHtml}
+        ${notInPod.length>0?`<div style="display:flex;gap:8px;margin-top:1rem;align-items:center">
+          <select id="add-pod-sel" style="flex:1">${addOpts}</select>
+          <button class="btn btn-p" onclick="addPodMember('${S.selPodClient}')">+ Add to pod</button>
+        </div>`:'<div style="font-size:12px;color:#888;margin-top:.75rem">All staff are in this pod.</div>'}
+      </div>
+    </div>`;
+  }
+
+  // ── STAFF PODS VIEW ──
+  if(!S.selPodStaff&&S.staff.length)S.selPodStaff=S.staff[0].id;
+  const selS2=gsN(S.selPodStaff);
+  const myClients=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(S.selPodStaff));
+  const staffOpts=S.staff.map(st=>`<option value="${st.id}"${st.id===S.selPodStaff?'selected':''}>${st.name}</option>`).join('');
+  const podsHtml=myClients.length===0
+    ?`<div style="font-size:12px;color:#888;padding:.5rem 0">Not in any client pods yet.</div>`
+    :myClients.map(([cid])=>{const c=gcN(cid);if(!c)return'';const sc=overlap(S.selPodStaff,cid);const pod=S.pods[cid]||[];
+      return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,.08)">
+        <div class="av av-c" style="width:28px;height:28px">${ini(c.name)}</div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:500">${c.name}</div><div style="font-size:11px;color:#888">${sc} overlap · ${pod.length} in pod</div></div>
+        <button class="btn btn-d btn-sm" onclick="removePodMember('${cid}','${S.selPodStaff}')">Remove</button>
+      </div>`;}).join('');
+  const notInFor=S.clients.filter(c=>!(S.pods[c.id]||[]).includes(S.selPodStaff));
+  const addClientOpts=notInFor.length?notInFor.map(c=>`<option value="${c.id}">${c.name}</option>`).join(''):`<option disabled>In all client pods</option>`;
+
+  // All staff overview grid
+  const allStaffHtml=S.staff.map(st=>{
+    const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(st.id));
+    const out=S.calledOut.includes(st.id);
+    const isSelected=st.id===S.selPodStaff;
+    return`<div class="card" style="margin:0;cursor:pointer;${isSelected?'border-color:#534AB7;':''}outline:${isSelected?'2px solid #EEEDFE':'none'}" onclick="S.selPodStaff='${st.id}';render()">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+        <div class="av av-s" style="width:26px;height:26px">${ini(st.name)}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:500">${st.name}${out?' <span style="color:#E24B4A;font-size:10px">(out)</span>':''}</div><div style="font-size:10px;color:#888">${myC.length} client${myC.length!==1?'s':''}</div></div>
+      </div>
+      ${myC.map(([cid])=>{const c=gcN(cid);return c?`<div style="display:flex;align-items:center;gap:5px;padding:3px 0;font-size:11px"><div class="av av-c" style="width:18px;height:18px;font-size:7px">${ini(c.name)}</div><span>${c.name}</span></div>`:'';}).join('')}
+    </div>`;}).join('');
+
+  return`<div style="width:100%;flex-direction:column" class="content">
+    ${toggleBtns}
+    <h3 style="font-size:13px;font-weight:500;color:#888;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">All staff pods — click to manage</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;margin-bottom:1.5rem">${allStaffHtml}</div>
+    <div class="card" style="max-width:560px">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.875rem;flex-wrap:wrap">
+        <div class="ct">Edit pods for:</div>
+        <select style="flex:1;max-width:200px" onchange="S.selPodStaff=this.value;render()">${staffOpts}</select>
+        <span style="font-size:11px;color:#888">${myClients.length} client pod${myClients.length!==1?'s':''}</span>
+      </div>
+      ${podsHtml}
+      ${notInFor.length>0?`<div style="display:flex;gap:8px;margin-top:1rem;align-items:center">
+        <select id="add-client-pod-sel" style="flex:1">${addClientOpts}</select>
+        <button class="btn btn-p" onclick="addStaffToPod('${S.selPodStaff}')">+ Add to client pod</button>
+      </div>`:'<div style="font-size:12px;color:#888;margin-top:.75rem">Already in all client pods.</div>'}
+    </div>
+  </div>`;
+}
+
+function addPodMember(cid){
+  const sel=document.getElementById('add-pod-sel');if(!sel?.value)return;
+  const sid=sel.value;
+  if(!S.pods[cid])S.pods[cid]=[];
+  if(!S.pods[cid].includes(sid))S.pods[cid].push(sid);
+  markDirty();render();
+}
+function removePodMember(cid,sid){
+  if(!S.pods[cid])return;
+  S.pods[cid]=S.pods[cid].filter(s=>s!==sid);
+  markDirty();render();
+}
+function addStaffToPod(sid){
+  const sel=document.getElementById('add-client-pod-sel');if(!sel?.value)return;
+  const cid=sel.value;
+  if(!S.pods[cid])S.pods[cid]=[];
+  if(!S.pods[cid].includes(sid))S.pods[cid].push(sid);
+  markDirty();render();
 }
 
 function rCallout(){
