@@ -453,9 +453,17 @@ function toggleDay(cid,day){
 function tryLoad(){
   try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;S.selDaysS=initSDS(S.staff);updSI();return true;}}catch(e){}return false;
 }
-function doSave(){try{const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();showToast('Saved',false);}catch(e){showToast('Save failed',true);}}
-function markDirty(){S.dirty=true;updSI();}
-function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Unsaved changes';}else if(S.lastSaved){el.className='si saved';el.textContent='Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved yet';}}
+function doSave(silent){try{const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();if(!silent)showToast('Saved',false);}catch(e){showToast('Save failed',true);}}
+function autoSave(){if(S.dirty)doSave(true);}
+function markDirty(){
+  S.dirty=true;updSI();
+  // Autosave 2 seconds after the last change
+  if(window._autoSaveTimer)clearTimeout(window._autoSaveTimer);
+  window._autoSaveTimer=setTimeout(()=>{
+    if(S.dirty){doSave(true);}
+  },2000);
+}
+function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Saving...';}else if(S.lastSaved){el.className='si saved';el.textContent='Autosaved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved yet';}}
 function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
 function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,exportedAt:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='podscheduler-backup.json';a.click();URL.revokeObjectURL(u);showToast('Backup downloaded',false);}
 function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
