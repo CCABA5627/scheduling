@@ -791,12 +791,15 @@ function rPods(){
     const allPodsHtml=S.clients.map(cl=>{
       const p=S.pods[cl.id]||[];const pok=p.length>=4&&p.length<=7;
       const isSelected=cl.id===S.selPodClient;
+      const clSchedDays=DAYS.filter(d=>(cl.schedule[d]||[]).length>0);
+      const clSchedStr=clSchedDays.length?clSchedDays.map(d=>{const blocks=cl.schedule[d];return d+' '+blocks[0].from+'–'+blocks[blocks.length-1].to;}).join(' · '):'No schedule set';
       return`<div class="card" style="margin:0;cursor:pointer;${isSelected?'border-color:#534AB7;':''}${isSelected?'outline:2px solid #EEEDFE;':''}" onclick="S.selPodClient='${cl.id}';render()">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
           <div class="av av-c" style="width:26px;height:26px">${ini(cl.name)}</div>
           <div style="flex:1"><div style="font-size:12px;font-weight:500">${cl.name}</div><div style="font-size:10px;color:#888">${p.length} staff</div></div>
           <span style="font-size:10px;padding:2px 6px;border-radius:8px;background:${pok?'#C0DD97':'#F5C4B3'};color:${pok?'#173404':'#4A1B0C'}">${pok?'Good':''+p.length}</span>
         </div>
+        <div style="font-size:10px;color:#888;margin-bottom:6px;padding-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,.08);line-height:1.5">${clSchedStr}</div>
         ${p.map(sid=>{const st=gsN(sid);const out=S.calledOut.includes(sid);if(!st)return'';
           const availDays=DAYS.filter(d=>(st.availability[d]||[]).length>0);
           const availStr=availDays.length?availDays.join(','):'no avail';
@@ -875,11 +878,14 @@ function rPods(){
     const myC=Object.entries(S.pods).filter(([cid,pod])=>pod.includes(st.id));
     const out=S.calledOut.includes(st.id);
     const isSelected=st.id===S.selPodStaff;
+    const stAvailDays=DAYS.filter(d=>(st.availability[d]||[]).length>0);
+    const stAvailStr=stAvailDays.length?stAvailDays.map(d=>{const sl=st.availability[d];return d+' '+sl[0]+'–'+sl[sl.length-1];}).join(' · '):'No availability set';
     return`<div class="card" style="margin:0;cursor:pointer;${isSelected?'border-color:#534AB7;':''}${isSelected?'outline:2px solid #EEEDFE;':''}" onclick="S.selPodStaff='${st.id}';render()">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
         <div class="av av-s" style="width:26px;height:26px">${ini(st.name)}</div>
         <div style="flex:1"><div style="font-size:12px;font-weight:500">${st.name}${out?' <span style="color:#E24B4A;font-size:10px">(out)</span>':''}</div><div style="font-size:10px;color:#888">${myC.length} client${myC.length!==1?'s':''}</div></div>
       </div>
+      <div style="font-size:10px;color:#888;margin-bottom:6px;padding-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,.08);line-height:1.5">${stAvailStr}</div>
       ${myC.map(([cid])=>{const c=gcN(cid);if(!c)return'';
         const schedDays=DAYS.filter(d=>(c.schedule[d]||[]).length>0);
         const schedStr=schedDays.length?schedDays.join(','):'no sched';
