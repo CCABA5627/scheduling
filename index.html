@@ -438,13 +438,48 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     return{hasConflict:conflicts.length>0,conflicts};
   }
 
-  // Compute which slots are already covered by existing splits
+  // If primary staff has a partial callout, auto-convert to splits so popup reflects reality
+  if(blk&&blk.staffId&&!blk.splits){
+    const staffCOs=getStaffCallout(blk.staffId);
+    const hasPartialCO=staffCOs.some(co=>co.fromM!==undefined);
+    if(hasPartialCO){
+      // Build splits: staff covers only the slots they are NOT called out for
+      const calledOutSlots=new Set();
+      staffCOs.forEach(co=>{
+        if(co.fromM===undefined)return; // all day handled elsewhere
+        slotsInBlock(blk.from,blk.to).forEach(sl=>{if(t2m(sl)>=co.fromM&&t2m(sl)<co.toM)calledOutSlots.add(sl);});
+      });
+      const covSlots=slotsInBlock(blk.from,blk.to).filter(sl=>!calledOutSlots.has(sl));
+      if(covSlots.length){
+        const ef=covSlots[0];
+        const elIdx=TIMES.indexOf(covSlots[covSlots.length-1]);
+        const et=TIMES[elIdx+1]||blk.to;
+        blk.splits=[{sid:blk.staffId,from:ef,to:et}];
+      } else {
+        blk.splits=[];
+      }
+    }
+  }
+
+  // Compute which slots are already covered by existing splits — excluding called-out slots
   const alreadyCoveredSlots=new Set();
   if(blk?.splits){
-    blk.splits.forEach(sp=>slotsInBlock(sp.from,sp.to).forEach(sl=>{if(slots.includes(sl))alreadyCoveredSlots.add(sl);}));
+    blk.splits.forEach(sp=>{
+      const spCOs=getStaffCallout(sp.sid);
+      const calledOutM=new Set();
+      spCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{
+        if(slots.includes(sl)&&!calledOutM.has(t2m(sl)))alreadyCoveredSlots.add(sl);
+      });
+    });
   } else if(blk?.staffId){
-    const pav=new Set(gsN(blk.staffId)?.availability[day]||[]);
-    slots.forEach(sl=>{if(pav.has(sl))alreadyCoveredSlots.add(sl);});
+    const staffCOs=getStaffCallout(blk.staffId);
+    const calledOutM=new Set();
+    staffCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+    if(!staffCOs.some(co=>co.fromM===undefined)){
+      const pav=new Set(gsN(blk.staffId)?.availability[day]||[]);
+      slots.forEach(sl=>{if(pav.has(sl)&&!calledOutM.has(t2m(sl)))alreadyCoveredSlots.add(sl);});
+    }
   }
   const remainingSlots=slots.filter(sl=>!alreadyCoveredSlots.has(sl));
 
@@ -513,17 +548,29 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   if(splits&&splits.length){
     const blockSlots=blk.isTemp?blk.slots:slotsInBlock(blockFrom,blockTo);
     const coveredSlots=new Set();
-    splits.forEach(sp=>slotsInBlock(sp.from,sp.to).forEach(sl=>{if(blockSlots.includes(sl))coveredSlots.add(sl);}));
+    splits.forEach(sp=>{
+      const spCOs=getStaffCallout(sp.sid);
+      const calledOutM=new Set();
+      spCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(blockSlots.includes(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);});
+    });
     const uncoveredSlots=blockSlots.filter(sl=>!coveredSlots.has(sl));
-    const uncoveredDesc=uncoveredSlots.length?`<div style="font-size:11px;color:#b87a00;font-weight:600;margin-top:6px;">⏱ Still uncovered: ${uncoveredSlots.length*15}m (${uncoveredSlots[0]} – ${slotEndDisplay(uncoveredSlots[uncoveredSlots.length-1],blockTo)})</div>`:'<div style="font-size:11px;color:#1D9E75;font-weight:600;margin-top:6px;">✅ Fully covered!</div>';
+    const uncoveredDesc=uncoveredSlots.length
+      ?`<div style="font-size:11px;color:#b87a00;font-weight:600;margin-top:6px;">⏱ Still uncovered: ${uncoveredSlots.length*15}m (${uncoveredSlots[0]} – ${slotEndDisplay(uncoveredSlots[uncoveredSlots.length-1],blockTo)})</div>`
+      :'<div style="font-size:11px;color:#1D9E75;font-weight:600;margin-top:6px;">✅ Fully covered!</div>';
     currentCoverageHtml=`<div style="background:#E1F5EE;border:1px solid #5DCAA5;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
       <div style="font-size:11px;font-weight:700;color:#085041;margin-bottom:6px;">Current coverage</div>
-      ${splits.map(sp=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(gsN(sp.sid)?.name||'?')}</div>
-        <span style="font-size:12px;font-weight:500;flex:1">${gsN(sp.sid)?.name}</span>
-        <span style="font-size:11px;color:#085041">${sp.from} – ${sp.to}</span>
-        <button onclick="removeSplit('${cid}','${day}',${isTemp?-1:blockIdx},'${sp.sid}','${tempId||''}')" style="background:none;border:none;color:#D85A30;cursor:pointer;font-size:14px;padding:0 2px;">×</button>
-      </div>`).join('')}
+      ${splits.map(sp=>{
+        const spCOs=getStaffCallout(sp.sid);
+        const partialOut=spCOs.filter(co=>co.fromM!==undefined);
+        const coNote=partialOut.length?`<span style="font-size:10px;color:#b87a00;margin-left:4px;">(out ${partialOut.map(co=>coLabel(co)).join(', ')})</span>`:'';
+        return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(gsN(sp.sid)?.name||'?')}</div>
+          <span style="font-size:12px;font-weight:500;flex:1">${gsN(sp.sid)?.name}${coNote}</span>
+          <span style="font-size:11px;color:#085041">${sp.from} – ${sp.to}</span>
+          <button onclick="removeSplit('${cid}','${day}',${isTemp?-1:blockIdx},'${sp.sid}','${tempId||''}')" style="background:none;border:none;color:#D85A30;cursor:pointer;font-size:14px;padding:0 2px;">×</button>
+        </div>`;
+      }).join('')}
       ${uncoveredDesc}
       <button class="unassign-btn" style="margin-top:8px;" onclick="clearAllSplits('${cid}','${day}',${isTemp?-1:blockIdx},'${tempId||''}')">Clear all assignments</button>
     </div>`;
@@ -739,27 +786,29 @@ function fmtBlock(blk){return blk.from+(blk.from!==blk.to?' \u2013 '+blk.to:'');
 function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;(c.schedule[day]||[]).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,splits:blk.splits||null,isTemp:false,blockIdx:idx});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c||S.calledOutClients.includes(tb.cid))return;out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,splits:tb.splits||null,isTemp:true,tempId:tb.id,label:tb.label,slots:tb.slots});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
 
 function getPartialGaps(bl,day){
-  // Skip if no staff assigned at all
   if(!bl.staffId&&(!bl.splits||!bl.splits.length))return null;
   const blockFrom=bl.from, blockTo=bl.to;
   const allSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
   if(!allSlots.length)return null;
 
-  // Build set of covered slots — from splits if present, else from single staffId
   const coveredSlots=new Set();
   if(bl.splits&&bl.splits.length){
     bl.splits.forEach(sp=>{
-      if(isStaffOut(sp.sid))return;
-      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(allSlots.includes(sl))coveredSlots.add(sl);});
+      const spCOs=getStaffCallout(sp.sid);
+      const calledOutM=new Set();
+      spCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(allSlots.includes(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);});
     });
   } else if(bl.staffId){
-    const av=new Set(gsN(bl.staffId)?.availability[day]||[]);
-    allSlots.forEach(sl=>{if(av.has(sl))coveredSlots.add(sl);});
-  } else {
-    return null; // no staff assigned
+    const staffCOs=getStaffCallout(bl.staffId);
+    if(!staffCOs.some(co=>co.fromM===undefined)){
+      const calledOutM=new Set();
+      staffCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+      const av=new Set(gsN(bl.staffId)?.availability[day]||[]);
+      allSlots.forEach(sl=>{if(av.has(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);});
+    }
   }
 
-  if(!bl.staffId&&(!bl.splits||!bl.splits.length))return null;
   const uncovered=allSlots.filter(sl=>!coveredSlots.has(sl));
   if(!uncovered.length)return null;
 
