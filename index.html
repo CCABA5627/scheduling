@@ -265,7 +265,7 @@ let S={
   ...JSON.parse(JSON.stringify(DD)),
   selClient:'c1',selStaff:'s1',calloutStaff:null,calledOut:[],
   edTab:'clients',expEdit:null,
-  dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false
+  dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null
 };
 S.selDaysS=initSDS(S.staff);
 
@@ -571,7 +571,9 @@ function getDayBlocks(day){
 
 /* ===== RENDERS ===== */
 function rToday(){
-  const today=todayDay();
+  if(!S.selectedDay)S.selectedDay=todayDay();
+  const today=S.selectedDay;
+  const realToday=todayDay();
   const blocks=getDayBlocks(today);
   const banner=S.calledOut.length>0?`<div class="cob"><div class="cot">Called out today</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(sid=>{const s=gsN(sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span onclick="rmCO('${sid}')" style="cursor:pointer">x</span></span>`;}).join('')}</div></div>`:'';
   const cov=blocks.filter(b=>b.staffId&&!S.calledOut.includes(b.staffId)).length;
@@ -1027,35 +1029,54 @@ function rES(){
 }
 
 function rAG(s){
-  // Build assigned slots map: day -> {slot -> {clientName, from, to}}
-  const assigned={};
-  DAYS.forEach(d=>{ assigned[d]={}; });
+  // Build assigned blocks map: day -> [{clientName, from, to, startSlot, endSlot}]
+  const assignedBlocks={};
+  DAYS.forEach(d=>{ assignedBlocks[d]=[]; });
+  S.clients.forEach(c=>{
+    DAYS.forEach(d=>{
+      (c.schedule[d]||[]).forEach(blk=>{
+        if(blk.staffId!==s.id)return;
+        assignedBlocks[d].push({clientName:c.name,from:blk.from,to:blk.to});
+      });
+    });
+  });
+  (S.tempBlocks||[]).forEach(tb=>{
+    if(tb.staffId!==s.id)return;
+    if(!assignedBlocks[tb.day])assignedBlocks[tb.day]=[];
+    assignedBlocks[tb.day].push({clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to});
+  });
+
+  // For the cell grid we still need slot-level lookup for coloring
+  const assignedSlots={};
+  DAYS.forEach(d=>{ assignedSlots[d]={}; });
   S.clients.forEach(c=>{
     DAYS.forEach(d=>{
       (c.schedule[d]||[]).forEach(blk=>{
         if(blk.staffId!==s.id)return;
         slotsInBlock(blk.from,blk.to).forEach(slot=>{
-          assigned[d][slot]={clientName:c.name,from:blk.from,to:blk.to};
+          assignedSlots[d][slot]={clientName:c.name,from:blk.from,to:blk.to};
         });
       });
     });
   });
   (S.tempBlocks||[]).forEach(tb=>{
     if(tb.staffId!==s.id)return;
-    if(!assigned[tb.day])assigned[tb.day]={};
     tb.slots.forEach(slot=>{
-      assigned[tb.day][slot]={clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to,isTemp:true};
+      if(!assignedSlots[tb.day])assignedSlots[tb.day]={};
+      assignedSlots[tb.day][slot]={clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to};
     });
   });
 
   let out='';
+
   // Legend
   out+=`<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.625rem;font-size:10px;color:#777">
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Scheduled</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:0.5px solid #85B7EB;display:inline-block"></span>Available</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f5f5f3;border:0.5px solid rgba(0,0,0,.1);display:inline-block"></span>Unavailable</span>
   </div>`;
-  // Grid
+
+  // Grid — cell-based with teal for assigned, blue for available
   out+=`<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:72px repeat(5,1fr);gap:2px;min-width:420px"><div></div>`;
   DAYS.forEach(d=>{out+=`<div style="text-align:center;font-size:10px;font-weight:500;color:#888;padding:5px 3px;text-transform:uppercase">${d}</div>`;});
   TIMES.forEach(t=>{
@@ -1063,33 +1084,37 @@ function rAG(s){
     out+=`<div style="font-size:9px;color:#888;padding:0 4px;display:flex;align-items:center;justify-content:flex-end;height:22px">${isH?t:''}</div>`;
     DAYS.forEach(d=>{
       const av=(s.availability[d]||[]).includes(t);
-      const asgn=assigned[d]?.[t];
-      let bg,border,title='',cursor='default';
-      if(asgn){bg='#9FE1CB';border='#1D9E75';title=`${asgn.clientName} ${asgn.from}\u2013${asgn.to}`;cursor='help';}
-      else if(av){bg='#E6F1FB';border='#85B7EB';title='Available';}
+      const asgn=assignedSlots[d]?.[t];
+      let bg,border,title='';
+      if(asgn){bg='#9FE1CB';border='#1D9E75';title=`${asgn.clientName} ${asgn.from}\u2013${asgn.to}`;}
+      else if(av){bg='#E6F1FB';border='#85B7EB';}
       else{bg='transparent';border='rgba(0,0,0,.08)';}
-      out+=`<div style="height:22px;border-radius:2px;border:0.5px solid ${border};background:${bg};cursor:${cursor}" title="${title}"></div>`;
+      out+=`<div style="height:22px;border-radius:2px;border:0.5px solid ${border};background:${bg}" title="${title}"></div>`;
     });
   });
   out+=`</div></div>`;
-  // Weekly assignment summary
-  const weekSummary=[];
-  DAYS.forEach(d=>{
-    const dayBlocks=[];
-    S.clients.forEach(c=>{
-      (c.schedule[d]||[]).forEach(blk=>{if(blk.staffId===s.id)dayBlocks.push({clientName:c.name,from:blk.from,to:blk.to});});
-    });
-    (S.tempBlocks||[]).forEach(tb=>{if(tb.staffId===s.id&&tb.day===d)dayBlocks.push({clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to});});
-    if(dayBlocks.length)weekSummary.push({day:d,blocks:dayBlocks.sort((a,b)=>t2m(a.from)-t2m(b.from))});
-  });
-  if(weekSummary.length){
-    out+=`<div style="margin-top:1rem"><div style="font-size:11px;font-weight:500;color:#555;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em">This week's assignments</div>`;
-    weekSummary.forEach(({day,blocks})=>{
-      out+=`<div style="margin-bottom:6px"><span style="font-size:11px;font-weight:500;color:#534AB7;min-width:36px;display:inline-block">${day}</span>`;
-      blocks.forEach(b=>{out+=` <span style="font-size:11px;background:#E1F5EE;color:#085041;padding:2px 8px;border-radius:12px;margin-right:4px">${b.clientName} ${b.from}\u2013${b.to}</span>`;});
+
+  // Scheduled blocks summary — lumped boxes showing client + time
+  const hasAny=DAYS.some(d=>assignedBlocks[d].length>0);
+  if(hasAny){
+    out+=`<div style="margin-top:1rem"><div style="font-size:11px;font-weight:500;color:#555;margin-bottom:.625rem;text-transform:uppercase;letter-spacing:.04em">Scheduled sessions this week</div>`;
+    out+=`<div style="display:grid;grid-template-columns:72px repeat(5,1fr);gap:4px;min-width:420px"><div></div>`;
+    // Day headers
+    DAYS.forEach(d=>{out+=`<div style="text-align:center;font-size:10px;font-weight:500;color:#888;padding:4px 2px;text-transform:uppercase">${d}</div>`;});
+    out+=`<div></div>`; // empty label column
+    DAYS.forEach(d=>{
+      const blocks=assignedBlocks[d];
+      if(!blocks.length){out+=`<div style="min-height:40px"></div>`;return;}
+      out+=`<div style="display:flex;flex-direction:column;gap:4px">`;
+      blocks.sort((a,b)=>t2m(a.from)-t2m(b.from)).forEach(blk=>{
+        out+=`<div style="background:#9FE1CB;border:1px solid #1D9E75;border-radius:6px;padding:5px 7px;font-size:11px;color:#04342C">
+          <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${blk.clientName}</div>
+          <div style="font-size:10px;opacity:.8">${blk.from}\u2013${blk.to}</div>
+        </div>`;
+      });
       out+=`</div>`;
     });
-    out+=`</div>`;
+    out+=`</div></div>`;
   } else {
     out+=`<div style="font-size:11px;color:#888;margin-top:.75rem;font-style:italic">No sessions assigned this week.</div>`;
   }
