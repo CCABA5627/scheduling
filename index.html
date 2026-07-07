@@ -298,16 +298,73 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   const range=blockFrom+(blockFrom!==blockTo?' \u2013 '+blockTo:'');
   document.getElementById('modal-title-text').textContent=(c?.name||'?')+' \u00b7 '+day+' '+range;
   const pod=S.pods[cid]||[];
+  const podSet=new Set(pod);
   const usedOther=new Set();
   (c?.schedule[day]||[]).forEach((blk2,i2)=>{if(!isTemp&&i2===blockIdx)return;if(blk2.staffId)usedOther.add(blk2.staffId);});
   S.tempBlocks.forEach(tb=>{if(tb.cid!==cid||tb.day!==day||tb.id===tempId)return;if(tb.staffId)usedOther.add(tb.staffId);});
+
+  // Pod members — split into available and unavailable
   const avail=[],unavail=[];
   pod.forEach(sid=>{const s=gsN(sid);if(!s)return;const sAvail=new Set(s.availability[day]||[]);const covers=slots.every(sl=>sAvail.has(sl));if(covers)avail.push({sid,score:overlap(sid,cid),usedOther:usedOther.has(sid)});else unavail.push({sid});});
   avail.sort((a,b)=>a.usedOther!==b.usedOther?(a.usedOther?1:-1):b.score-a.score);
+
+  // Non-pod staff who cover all slots and have no scheduling conflict
+  const nonPodAvail=[];
+  S.staff.forEach(s=>{
+    if(podSet.has(s.id)) return; // already in pod section
+    const sAvail=new Set(s.availability[day]||[]);
+    if(!slots.every(sl=>sAvail.has(sl))) return; // not available for full block
+    const conflict=checkConflict(s.id,day,slots,cid,isTemp?-1:blockIdx,tempId||null);
+    if(!conflict.hasConflict) nonPodAvail.push({sid:s.id,name:s.name});
+  });
+
+  // Build HTML helper for a staff option row
+  function staffRow(sid,label,subText,isCur,hasConflict,conflictNote){
+    const s=gsN(sid);
+    const borderStyle=hasConflict?'border:1.5px solid #F0997B;':'';
+    return`<div class="staff-opt${isCur?' current':''}" style="${borderStyle}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')">
+      <div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div>
+      <div style="flex:1">
+        <div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div>
+        <div class="staff-opt-sub">${subText}</div>
+        ${conflictNote||''}
+      </div>
+    </div>`;
+  }
+
   let html='';
-  if(avail.length){html+='<div class="modal-section">Available for this block</div>';avail.forEach(o=>{const s=gsN(o.sid);const isCur=o.sid===currentSid;const conflict=checkConflict(o.sid,day,slots,cid,isTemp?-1:blockIdx,tempId||null);let subNote='';if(conflict.hasConflict){const cnames=conflict.conflicts.map(c=>c.name+' '+c.from+'-'+c.to).join(', ');subNote=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Double-booked: ${cnames}</div>`;}else if(o.usedOther){subNote=`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`;}const borderStyle=conflict.hasConflict?'border:1.5px solid #F0997B;':'';html+=`<div class="staff-opt${isCur?' current':''}" style="${borderStyle}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${o.sid}','${tempId||''}')"><div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div><div style="flex:1"><div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${conflict.hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div><div class="staff-opt-sub">${o.score} overlap slots</div>${subNote}</div></div>`;});}
-  if(unavail.length){html+='<div class="modal-section">Not available for full block</div>';unavail.forEach(o=>{const s=gsN(o.sid);html+=`<div class="staff-opt unavail"><div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div><div class="staff-opt-name">${s.name}</div></div>`;});}
-  if(!pod.length)html='<div style="font-size:12px;color:#888;padding:.5rem 0">No pod members yet. Go to Clients tab to add pod members.</div>';
+
+  // Section 1: Pod members available
+  if(avail.length){
+    html+='<div class="modal-section">✅ Pod — available for this block</div>';
+    avail.forEach(o=>{
+      const conflict=checkConflict(o.sid,day,slots,cid,isTemp?-1:blockIdx,tempId||null);
+      let conflictNote='';
+      if(conflict.hasConflict){const cnames=conflict.conflicts.map(c=>c.name+' '+c.from+'-'+c.to).join(', ');conflictNote=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Double-booked: ${cnames}</div>`;}
+      else if(o.usedOther){conflictNote=`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`;}
+      const isCur=o.sid===currentSid;
+      html+=staffRow(o.sid,'Pod member',o.score+' overlap slots',isCur,conflict.hasConflict,conflictNote);
+    });
+  }
+
+  // Section 2: Pod members NOT available
+  if(unavail.length){
+    html+='<div class="modal-section">❌ Pod — not available for full block</div>';
+    unavail.forEach(o=>{const s=gsN(o.sid);html+=`<div class="staff-opt unavail"><div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div><div class="staff-opt-name">${s.name}</div><div class="staff-opt-sub">Unavailable during this time</div></div>`;});
+  }
+
+  // Section 3: Non-pod staff who are free
+  if(nonPodAvail.length){
+    html+=`<div class="modal-section" style="margin-top:10px;">🔓 Not in pod — but free during this block</div>`;
+    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">These staff are available but not in ${c?.name}'s pod. Adding them here only assigns this one block — go to Pods tab to add them to the pod permanently.</div>`;
+    nonPodAvail.forEach(o=>{
+      const isCur=o.sid===currentSid;
+      const usedNote=usedOther.has(o.sid)?`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`:'';
+      html+=staffRow(o.sid,'Not in pod','Available & no conflicts',isCur,false,usedNote);
+    });
+  }
+
+  if(!pod.length&&!nonPodAvail.length) html='<div style="font-size:12px;color:#888;padding:.5rem 0">No pod members yet and no other staff available. Go to Clients tab to set up this client\'s pod.</div>';
   if(currentSid||isTemp)html+=`<button class="unassign-btn" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">Remove assignment</button>`;
   if(isTemp)html+=`<button class="unassign-btn" style="color:#534AB7;border-color:#534AB7;margin-top:4px" onclick="deleteTempBlock('${tempId}')">Delete this temp block</button>`;
   document.getElementById('modal-body').innerHTML=html;
