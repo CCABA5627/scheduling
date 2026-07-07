@@ -378,17 +378,17 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   S.staff.forEach(s=>{
     if(podSet.has(s.id))return;
     const av=getAvailSlots(s.id);if(!av.length)return;
-    const conflict=chkConflict(s.id,av,cid,isTemp?-1:blockIdx,tempId||null);
-    if(conflict.hasConflict)return;
-    if(slots.every(sl=>av.includes(sl)))npFull.push({sid:s.id,av});
-    else if(av.length>=4)npPartial.push({sid:s.id,av});
+    const conflict=chkConflict(s.id,slots,cid,isTemp?-1:blockIdx,tempId||null);
+    const coversAll=slots.every(sl=>av.includes(sl));
+    if(coversAll&&!conflict.hasConflict)npFull.push({sid:s.id,av});
+    else if(!coversAll&&av.length>=4&&!conflict.hasConflict)npPartial.push({sid:s.id,av});
   });
 
   // Show current split coverage at top of modal
   const splits=blk?.splits;
   let currentCoverageHtml='';
   if(splits&&splits.length){
-    const blockSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
+    const blockSlots=blk.isTemp?blk.slots:slotsInBlock(blockFrom,blockTo);
     const coveredSlots=new Set();
     splits.forEach(sp=>slotsInBlock(sp.from,sp.to).forEach(sl=>{if(blockSlots.includes(sl))coveredSlots.add(sl);}));
     const uncoveredSlots=blockSlots.filter(sl=>!coveredSlots.has(sl));
@@ -442,10 +442,10 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   // 4. Non-pod — full, no conflict
   if(npFull.length){
     html+=`<div class="modal-section" style="margin-top:10px;">🔓 Not in pod — free for full block</div>`;
-    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">No conflicts. Go to Pods tab to add permanently.</div>`;
+    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">Available with no conflicts. Go to Pods tab to add permanently.</div>`;
     npFull.forEach(o=>{
       const note=usedOther.has(o.sid)?`<div style="font-size:10px;color:#888;margin-top:2px">Also on another block today</div>`:'';
-      html+=staffRow(o.sid,'Available — no conflicts',o.sid===currentSid,false,note);
+      html+=staffRow(o.sid,'Available — no conflicts',o.sid===currentSid,false,note,null,null);
     });
   }
 
