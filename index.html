@@ -296,9 +296,9 @@ function regBlock(key,data){window._BM[key]=data;return key;}
 function openBlock(key){const d=window._BM[key];if(d)openAssignModal(d.cid,d.day,d.blockIdx,d.isTemp,d.tempId);}
 
 function openAssignModal(cid,day,blockIdx,isTemp,tempId){
-  const c=gcN(cid);let blockFrom,blockTo,currentSid,slots;
-  if(isTemp){const tb=S.tempBlocks.find(t=>t.id===tempId);if(!tb)return;blockFrom=tb.slots[0];blockTo=tb.slots[tb.slots.length-1];currentSid=tb.staffId;slots=tb.slots;}
-  else{const blk=(c?.schedule[day]||[])[blockIdx];if(!blk)return;blockFrom=blk.from;blockTo=blk.to;currentSid=blk.staffId;slots=slotsInBlock(blk.from,blk.to);}
+  const c=gcN(cid);let blockFrom,blockTo,currentSid,slots,blk;
+  if(isTemp){blk=S.tempBlocks.find(t=>t.id===tempId);if(!blk)return;blockFrom=blk.slots[0];blockTo=blk.slots[blk.slots.length-1];currentSid=blk.staffId;slots=blk.slots;}
+  else{blk=(c?.schedule[day]||[])[blockIdx];if(!blk)return;blockFrom=blk.from;blockTo=blk.to;currentSid=blk.staffId;slots=slotsInBlock(blk.from,blk.to);}
   const range=blockFrom+(blockFrom!==blockTo?' \u2013 '+blockTo:'');
   document.getElementById('modal-title-text').textContent=(c?.name||'?')+' \u00b7 '+day+' '+range;
   const pod=S.pods[cid]||[];
@@ -334,6 +334,10 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     const av=new Set(gsN(sid)?.availability[day]||[]);
     return slots.filter(sl=>av.has(sl));
   }
+  function slotEndDisplay(slotTime,cap){
+    const idx=TIMES.indexOf(slotTime);const next=TIMES[idx+1];
+    return(next&&t2m(next)<=t2m(cap))?next:cap;
+  }
   function descAvail(availSlots){
     if(!availSlots.length)return null;
     const mins=availSlots.length*15;
@@ -346,9 +350,12 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     return`${availSlots[0]} \u2013 ${displayEnd} (${hrs})`;
   }
 
-  function staffRow(sid,subText,isCur,hasConflict,note){
+  function staffRow(sid,subText,isCur,hasConflict,note,extraStyle,mode){
     const s=gsN(sid);
-    return`<div class="staff-opt${isCur?' current':''}" style="${hasConflict?'border:1.5px solid #F0997B;':''}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')">
+    const assignFn=mode==='partial'
+      ?`doAssignPartial('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')`
+      :`doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')`;
+    return`<div class="staff-opt${isCur?' current':''}" style="${hasConflict?'border:1.5px solid #F0997B;':''}${extraStyle||''}" onclick="${assignFn}">
       <div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div>
       <div style="flex:1"><div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div>
       <div class="staff-opt-sub">${subText}</div>${note||''}</div>
@@ -377,7 +384,29 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     else if(av.length>=4)npPartial.push({sid:s.id,av});
   });
 
-  let html='';
+  // Show current split coverage at top of modal
+  const splits=blk?.splits;
+  let currentCoverageHtml='';
+  if(splits&&splits.length){
+    const blockSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
+    const coveredSlots=new Set();
+    splits.forEach(sp=>slotsInBlock(sp.from,sp.to).forEach(sl=>{if(blockSlots.includes(sl))coveredSlots.add(sl);}));
+    const uncoveredSlots=blockSlots.filter(sl=>!coveredSlots.has(sl));
+    const uncoveredDesc=uncoveredSlots.length?`<div style="font-size:11px;color:#b87a00;font-weight:600;margin-top:6px;">⏱ Still uncovered: ${uncoveredSlots.length*15}m (${uncoveredSlots[0]} – ${slotEndDisplay(uncoveredSlots[uncoveredSlots.length-1],blockTo)})</div>`:'<div style="font-size:11px;color:#1D9E75;font-weight:600;margin-top:6px;">✅ Fully covered!</div>';
+    currentCoverageHtml=`<div style="background:#E1F5EE;border:1px solid #5DCAA5;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:#085041;margin-bottom:6px;">Current coverage</div>
+      ${splits.map(sp=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(gsN(sp.sid)?.name||'?')}</div>
+        <span style="font-size:12px;font-weight:500;flex:1">${gsN(sp.sid)?.name}</span>
+        <span style="font-size:11px;color:#085041">${sp.from} – ${sp.to}</span>
+        <button onclick="removeSplit('${cid}','${day}',${isTemp?-1:blockIdx},'${sp.sid}','${tempId||''}')" style="background:none;border:none;color:#D85A30;cursor:pointer;font-size:14px;padding:0 2px;">×</button>
+      </div>`).join('')}
+      ${uncoveredDesc}
+      <button class="unassign-btn" style="margin-top:8px;" onclick="clearAllSplits('${cid}','${day}',${isTemp?-1:blockIdx},'${tempId||''}')">Clear all assignments</button>
+    </div>`;
+  }
+
+  let html=currentCoverageHtml;
 
   // 1. Pod — full block
   if(podFull.length){
@@ -396,7 +425,11 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     html+='<div class="modal-section">🕐 Pod — partially available (≥1hr)</div>';
     podPartial.forEach(o=>{
       const desc=descAvail(o.av)||'Partial';
-      html+=staffRow(o.sid,desc,o.sid===currentSid,false,`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`);
+      const alreadyAdded=splits&&splits.some(sp=>sp.sid===o.sid);
+      const note=alreadyAdded
+        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">✓ Already in coverage</div>`
+        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block — click to add their portion</div>`;
+      html+=staffRow(o.sid,desc,alreadyAdded,false,note,null,'partial');
     });
   }
 
@@ -422,18 +455,87 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">Available for part of this block with no conflicts.</div>`;
     npPartial.forEach(o=>{
       const desc=descAvail(o.av)||'Partial';
-      html+=staffRow(o.sid,desc,o.sid===currentSid,false,`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`);
+      const alreadyAdded=splits&&splits.some(sp=>sp.sid===o.sid);
+      const note=alreadyAdded
+        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">✓ Already in coverage</div>`
+        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block — click to add their portion</div>`;
+      html+=staffRow(o.sid,desc,alreadyAdded,false,note,null,'partial');
     });
   }
 
   if(!html)html='<div style="font-size:12px;color:#888;padding:.5rem 0">No staff available during this time.</div>';
-  if(currentSid||isTemp)html+=`<button class="unassign-btn" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">Remove assignment</button>`;
+  if(!blk?.splits&&(currentSid||isTemp))html+=`<button class="unassign-btn" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">Remove assignment</button>`;
   if(isTemp)html+=`<button class="unassign-btn" style="color:#534AB7;border-color:#534AB7;margin-top:4px" onclick="deleteTempBlock('${tempId}')">Delete this temp block</button>`;
   document.getElementById('modal-body').innerHTML=html;
   document.getElementById('assign-modal').classList.remove('hidden');
 }
 function closeModal(){document.getElementById('assign-modal').classList.add('hidden');}
-function doAssign(cid,day,blockIdx,newSid,tempId){if(tempId){const tb=S.tempBlocks.find(t=>t.id===tempId);if(tb)tb.staffId=newSid||null;}else{const blk=(gcN(cid)?.schedule[day]||[])[blockIdx];if(blk)blk.staffId=newSid||null;}markDirty();closeModal();render();}
+
+// Get the block object (regular or temp)
+function getBlk(cid,day,blockIdx,tempId){
+  if(tempId)return S.tempBlocks.find(t=>t.id===tempId)||null;
+  return (gcN(cid)?.schedule[day]||[])[blockIdx]||null;
+}
+
+// Add or replace a staff member's coverage on a block for specific slots
+function doAssign(cid,day,blockIdx,newSid,tempId){
+  const blk=getBlk(cid,day,blockIdx,tempId);
+  if(!blk)return;
+  // Simple (non-split) assign — just set staffId and clear splits
+  blk.staffId=newSid||null;
+  blk.splits=null;
+  markDirty();closeModal();render();
+}
+
+// Assign a staff member to cover only the slots they're available for within a block
+function doAssignPartial(cid,day,blockIdx,newSid,tempId){
+  const blk=getBlk(cid,day,blockIdx,tempId);
+  if(!blk)return;
+  const blockSlots=blk.slots||slotsInBlock(blk.from,blk.to);
+  const staffAvail=new Set(gsN(newSid)?.availability[day]||[]);
+  const coverSlots=blockSlots.filter(sl=>staffAvail.has(sl));
+  if(!coverSlots.length)return;
+  // Convert covered slots to a time range
+  const from=coverSlots[0];
+  const lastIdx=TIMES.indexOf(coverSlots[coverSlots.length-1]);
+  const to=TIMES[lastIdx+1]||blk.to;
+  // Init splits if needed, remove any existing entry for this staff, add new
+  if(!blk.splits)blk.splits=blk.staffId?[{sid:blk.staffId,from:blk.from,to:blk.to}]:[];
+  blk.splits=blk.splits.filter(sp=>sp.sid!==newSid);
+  blk.splits.push({sid:newSid,from,to});
+  blk.splits.sort((a,b)=>t2m(a.from)-t2m(b.from));
+  // Set primary staffId to first assigned
+  blk.staffId=blk.splits[0].sid;
+  markDirty();
+  // Re-render just the modal body so user can keep adding staff
+  renderAssignModalBody(cid,day,blockIdx,tempId,blk);
+  render();
+}
+
+function removeSplit(cid,day,blockIdx,sid,tempId){
+  const blk=getBlk(cid,day,blockIdx,tempId);
+  if(!blk)return;
+  if(blk.splits){blk.splits=blk.splits.filter(sp=>sp.sid!==sid);if(!blk.splits.length)blk.splits=null;}
+  blk.staffId=blk.splits?.[0]?.sid||null;
+  markDirty();
+  renderAssignModalBody(cid,day,blockIdx,tempId,blk);
+  render();
+}
+
+function clearAllSplits(cid,day,blockIdx,tempId){
+  const blk=getBlk(cid,day,blockIdx,tempId);
+  if(!blk)return;
+  blk.staffId=null;blk.splits=null;
+  markDirty();closeModal();render();
+}
+
+// Render just the modal body (used when updating splits without closing modal)
+function renderAssignModalBody(cid,day,blockIdx,tempId,blk){
+  const existing=document.getElementById('modal-body');
+  if(!existing)return;
+  // Re-open the modal with updated state
+  openAssignModal(cid,day,blockIdx,blk?.isTemp||!!tempId,tempId);
+}
 function deleteTempBlock(id){S.tempBlocks=S.tempBlocks.filter(t=>t.id!==id);markDirty();closeModal();render();}
 
 function openTempModal(prefillDay){
@@ -478,41 +580,40 @@ function fmtBlock(blk){return blk.from+(blk.from!==blk.to?' \u2013 '+blk.to:'');
 function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;(c.schedule[day]||[]).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,isTemp:false,blockIdx:idx});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c||S.calledOutClients.includes(tb.cid))return;out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,isTemp:true,tempId:tb.id,label:tb.label});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
 
 function getPartialGaps(bl,day){
-  if(!bl.staffId||S.calledOut.includes(bl.staffId))return null;
-  // Use the block's actual start/end times for display, slots for coverage checking
+  if(S.calledOut.includes(bl.staffId))return null;
   const blockFrom=bl.from, blockTo=bl.to;
-  const slots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
-  const staffAvail=new Set(gsN(bl.staffId)?.availability[day]||[]);
-  const uncovered=slots.filter(sl=>!staffAvail.has(sl));
-  if(!uncovered.length)return null;
+  const allSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
+  if(!allSlots.length)return null;
 
-  // Helper: given a slot time, return the display end time (next 15-min boundary)
-  // but cap it at the block's actual end time
-  function slotEnd(slotTime){
-    const idx=TIMES.indexOf(slotTime);
-    const next=TIMES[idx+1];
-    if(!next)return blockTo; // last possible slot
-    // If next slot is past the block end, use block end
-    return t2m(next)<=t2m(blockTo)?next:blockTo;
+  // Build set of covered slots — from splits if present, else from single staffId
+  const coveredSlots=new Set();
+  if(bl.splits&&bl.splits.length){
+    bl.splits.forEach(sp=>{
+      if(S.calledOut.includes(sp.sid))return;
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(allSlots.includes(sl))coveredSlots.add(sl);});
+    });
+  } else if(bl.staffId){
+    const av=new Set(gsN(bl.staffId)?.availability[day]||[]);
+    allSlots.forEach(sl=>{if(av.has(sl))coveredSlots.add(sl);});
+  } else {
+    return null; // no staff assigned
   }
 
-  // Group consecutive uncovered slots into ranges
-  const ranges=[];
-  let start=uncovered[0],prev=uncovered[0];
+  if(!bl.staffId&&(!bl.splits||!bl.splits.length))return null;
+  const uncovered=allSlots.filter(sl=>!coveredSlots.has(sl));
+  if(!uncovered.length)return null;
+
+  function slotEnd(slotTime){
+    const idx=TIMES.indexOf(slotTime);const next=TIMES[idx+1];
+    return(next&&t2m(next)<=t2m(blockTo))?next:blockTo;
+  }
+  const ranges=[];let start=uncovered[0],prev=uncovered[0];
   for(let i=1;i<uncovered.length;i++){
     const prevIdx=TIMES.indexOf(prev),curIdx=TIMES.indexOf(uncovered[i]);
     if(curIdx===prevIdx+1){prev=uncovered[i];}
-    else{
-      // Range ended — display from start to end of prev slot
-      const displayEnd=slotEnd(prev);
-      ranges.push(start+' \u2013 '+displayEnd);
-      start=uncovered[i];prev=uncovered[i];
-    }
+    else{ranges.push(start+' \u2013 '+slotEnd(prev));start=uncovered[i];prev=uncovered[i];}
   }
-  // Last range — use block end if this is the last slot of the block, otherwise next slot
-  const lastSlotEnd=slotEnd(prev);
-  ranges.push(start+' \u2013 '+lastSlotEnd);
-
+  ranges.push(start+' \u2013 '+slotEnd(prev));
   const mins=uncovered.length*15;
   const dur=mins>=60?Math.floor(mins/60)+'h'+(mins%60?' '+mins%60+'m':''):(mins+'m');
   return`${dur} uncovered: ${ranges.join(', ')}`;
@@ -532,11 +633,14 @@ function rToday(){
     const blConflict=bl.staffId&&todayConflicts.has(bl.staffId)&&!co;
     const gaps=getPartialGaps(bl,today);
     const bdr=co?'border-color:#F0997B;background:#FAECE7':blConflict?'border-color:#D85A30;background:#FAECE7':gaps?'border-color:#EF9F27;background:#FFF8EC':bl.isTemp?'border-color:#85B7EB;background:#E6F1FB':'';
-    const chip=bl.staffId
-      ?(co?`<span class="cc">&#9888; ${gsN(bl.staffId)?.name} (out)</span>`
-        :blConflict?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FAECE7;color:#D85A30;font-weight:500">⚠ ${gsN(bl.staffId)?.name} (conflict)</span>`
-        :`<span class="sc2">${gsN(bl.staffId)?.name}</span>`)
-      :`<span class="uc">Needs coverage</span>`;
+    // Build staff chip — handle splits
+    let chip;
+    if(!bl.staffId){chip=`<span class="uc">Needs coverage</span>`;}
+    else if(co){chip=`<span class="cc">&#9888; ${gsN(bl.staffId)?.name} (out)</span>`;}
+    else if(blConflict){chip=`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FAECE7;color:#D85A30;font-weight:500">⚠ ${gsN(bl.staffId)?.name} (conflict)</span>`;}
+    else if(bl.splits&&bl.splits.length>1){
+      chip=`<div style="display:flex;flex-wrap:wrap;gap:3px;">${bl.splits.map(sp=>`<span class="sc2" style="font-size:10px;">${gsN(sp.sid)?.name} ${sp.from}\u2013${sp.to}</span>`).join('')}</div>`;
+    } else {chip=`<span class="sc2">${gsN(bl.staffId)?.name}</span>`;}
     const gapTag=gaps?`<div style="font-size:10px;color:#b87a00;font-weight:600;margin-top:3px;">⏱ ${gaps}</div>`:'';
     const tempTag=bl.isTemp?`<span class="tc">Temp${bl.label?' \u2013 '+bl.label:''}</span>`:'';
     const bkey=regBlock('t_'+bl.client.id+'_'+today+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:today,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
@@ -567,7 +671,14 @@ function rToday(){
   </div><div class="content">${staffBanner}${clientBanner}<div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="ct">${today===realToday?"Today's Sessions":"Sessions"} \u2014 ${today}</div>${today!==realToday?'<span style="font-size:11px;background:#EEEDFE;color:#534AB7;padding:2px 8px;border-radius:10px">not today</span>':''}</div><div style="display:flex;gap:4px;flex-wrap:wrap">${DAYS.map(d=>`<button class="btn btn-sm" style="font-size:11px;${d===today?'background:#534AB7;color:#fff;border-color:#534AB7':d===realToday?'border-color:#534AB7;color:#534AB7':''}" onclick="S.selectedDay='${d}';render()">${d}</button>`).join('')}</div></div>${sh}</div></div></div>`;
 }
 
-function rWeek(){const byDay={};DAYS.forEach(d=>byDay[d]=getDayBlocks(d));const total=Object.values(byDay).reduce((s,a)=>s+a.length,0);const cov=Object.values(byDay).reduce((s,a)=>s+a.filter(x=>x.staffId&&!S.calledOut.includes(x.staffId)).length,0);const cols=DAYS.map(d=>{const blocks=byDay[d];const isToday=d===todayDay();const inner=blocks.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`:blocks.map(bl=>{const co=bl.staffId&&S.calledOut.includes(bl.staffId);const dayConflicts=getConflictingStaffOnDay(d);const hasConflict=bl.staffId&&dayConflicts.has(bl.staffId)&&!co;const gaps=getPartialGaps(bl,d);const cls=bl.isTemp?'wtmp':co?'wco':hasConflict?'wconflict':gaps?'wpartial':bl.staffId?'wa':'wu';const sname=bl.staffId?(co?`\u26a0 ${gsN(bl.staffId)?.name} (out)`:hasConflict?`\u26a0 ${gsN(bl.staffId)?.name} (conflict)`:gaps?`${gsN(bl.staffId)?.name}`:`${gsN(bl.staffId)?.name}`):'Tap to assign';const gapLine=gaps?`<div class="wsb-gap">\u23F1 ${gaps}</div>`:'';const bkey=regBlock('w_'+bl.client.id+'_'+d+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:d,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});const delBtn=bl.isTemp?`<button class="wsb-del" onclick="event.stopPropagation();deleteTempBlock('${bl.tempId}')" title="Delete block">\u2715</button>`:`<button class="wsb-del" onclick="event.stopPropagation();deleteBlock('${bl.client.id}','${d}',${bl.blockIdx})" title="Delete block">\u2715</button>`;return`<div class="wsl"><div class="wsb ${cls}" onclick="openBlock('${bkey}')"><div class="wsb-info"><div class="wsb-time">${fmtBlock(bl)}${bl.isTemp?' \u2022 TEMP':''}</div><div class="wsb-client">${bl.client.name}</div><div class="wsb-staff">${sname}</div>${gapLine}</div>${delBtn}</div></div>`;}).join('');return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}"><span>${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''}</span><span style="font-size:9px;color:#888;margin-left:4px">${blocks.length}</span><button class="btn btn-sm" style="margin-left:auto;font-size:10px;background:#E6F1FB;color:#0C447C;border-color:#85B7EB" onclick="openTempModal('${d}')">+ Temp</button></div>${inner}</div>`;}).join('');
+function rWeek(){const byDay={};DAYS.forEach(d=>byDay[d]=getDayBlocks(d));const total=Object.values(byDay).reduce((s,a)=>s+a.length,0);const cov=Object.values(byDay).reduce((s,a)=>s+a.filter(x=>x.staffId&&!S.calledOut.includes(x.staffId)).length,0);const cols=DAYS.map(d=>{const blocks=byDay[d];const isToday=d===todayDay();const inner=blocks.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`:blocks.map(bl=>{const co=bl.staffId&&S.calledOut.includes(bl.staffId);const dayConflicts=getConflictingStaffOnDay(d);const hasConflict=bl.staffId&&dayConflicts.has(bl.staffId)&&!co;const gaps=getPartialGaps(bl,d);const cls=bl.isTemp?'wtmp':co?'wco':hasConflict?'wconflict':gaps?'wpartial':bl.staffId?'wa':'wu';
+let sname;
+if(!bl.staffId){sname='Tap to assign';}
+else if(co){sname=`\u26a0 ${gsN(bl.staffId)?.name} (out)`;}
+else if(hasConflict){sname=`\u26a0 ${gsN(bl.staffId)?.name} (conflict)`;}
+else if(bl.splits&&bl.splits.length>1){sname=bl.splits.map(sp=>`${gsN(sp.sid)?.name} ${sp.from}\u2013${sp.to}`).join(' | ');}
+else{sname=gsN(bl.staffId)?.name||'?';}
+const gapLine=gaps?`<div class="wsb-gap">\u23F1 ${gaps}</div>`:'';const bkey=regBlock('w_'+bl.client.id+'_'+d+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:d,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});const delBtn=bl.isTemp?`<button class="wsb-del" onclick="event.stopPropagation();deleteTempBlock('${bl.tempId}')" title="Delete block">\u2715</button>`:`<button class="wsb-del" onclick="event.stopPropagation();deleteBlock('${bl.client.id}','${d}',${bl.blockIdx})" title="Delete block">\u2715</button>`;return`<div class="wsl"><div class="wsb ${cls}" onclick="openBlock('${bkey}')"><div class="wsb-info"><div class="wsb-time">${fmtBlock(bl)}${bl.isTemp?' \u2022 TEMP':''}</div><div class="wsb-client">${bl.client.name}</div><div class="wsb-staff">${sname}</div>${gapLine}</div>${delBtn}</div></div>`;}).join('');return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}"><span>${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''}</span><span style="font-size:9px;color:#888;margin-left:4px">${blocks.length}</span><button class="btn btn-sm" style="margin-left:auto;font-size:10px;background:#E6F1FB;color:#0C447C;border-color:#85B7EB" onclick="openTempModal('${d}')">+ Temp</button></div>${inner}</div>`;}).join('');
 return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">This week</div><div style="background:#E6F1FB;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#042C53">Total</div><div style="font-size:20px;font-weight:500;color:#042C53">${total}</div></div><div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div><div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${total-cov}</div></div></div><div class="ss" style="font-size:11px;color:#888;line-height:1.6">Click a block to reassign staff.<br>Click <strong>&#x2715;</strong> on a block to delete it.</div></div><div class="content"><div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;font-size:10px;color:#777"><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E1F5EE;display:inline-block"></span>Covered</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FFF8EC;border:1px solid #EF9F27;display:inline-block"></span>Partial coverage</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px dashed #F0997B;display:inline-block"></span>Needs coverage</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:1px dashed #85B7EB;display:inline-block"></span>Temp</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#F5C4B3;display:inline-block"></span>Called out</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #D85A30;display:inline-block"></span>⚠ Conflict</span></div><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:600px">${cols}</div></div></div></div>`;}
 
 function rClients(){const c=gcN(S.selClient);const pods=S.pods[S.selClient]||[];return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">Clients (${S.clients.length})</div><select style="margin-bottom:6px" onchange="selC(this.value)">${S.clients.map(cl=>`<option value="${cl.id}"${cl.id===S.selClient?'selected':''}>${cl.name}</option>`).join('')}</select><button class="add-btn" onclick="addC()">+ Add client</button></div></div><div class="content">${c?`<div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px"><div class="av av-c" style="width:32px;height:32px;font-size:12px">${ini(c.name)}</div><div class="ct">${c.name}</div></div><button class="btn btn-d btn-sm" onclick="rmC('${c.id}')">Delete</button></div><div style="background:#E6F1FB;border:1px solid #85B7EB;border-radius:8px;padding:.75rem;margin-bottom:.875rem;font-size:12px;color:#042C53;line-height:1.6"><strong>How to set up the schedule:</strong> Click a day to activate it, then use <strong>+ Add block</strong> to add time blocks. Set the start and end time for each block and choose which staff member covers it. Add multiple blocks per day for split shifts.</div>${rBlockBuilder(c)}</div><div class="card"><div class="ch"><div class="ct">Pod members</div><span style="font-size:11px;color:#888">${pods.length} staff</span></div><p style="font-size:11px;color:#888;margin-bottom:.5rem">Click to add/remove (4\u20137 recommended)</p><div class="pg">${S.staff.map(s=>{const inp=pods.includes(s.id);const sc=overlap(s.id,c.id);return`<div class="pm ${inp?'ip':''}" onclick="togPod('${c.id}','${s.id}')"><div class="av av-s" style="width:22px;height:22px;font-size:8px">${ini(s.name)}</div><div><div style="font-size:11px;font-weight:500">${s.name}</div><div style="font-size:10px;color:#888">${sc} overlap</div></div>${inp?'<span style="color:#185FA5;margin-left:auto">\u2713</span>':''}</div>`;}).join('')}</div></div>`:'<div class="es">Select a client</div>'}</div></div>`;}
