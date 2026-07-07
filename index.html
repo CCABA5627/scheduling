@@ -329,25 +329,39 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     return{hasConflict:conflicts.length>0,conflicts};
   }
 
+  // Compute which slots are already covered by existing splits
+  const alreadyCoveredSlots=new Set();
+  if(blk?.splits){
+    blk.splits.forEach(sp=>slotsInBlock(sp.from,sp.to).forEach(sl=>{if(slots.includes(sl))alreadyCoveredSlots.add(sl);}));
+  } else if(blk?.staffId){
+    const pav=new Set(gsN(blk.staffId)?.availability[day]||[]);
+    slots.forEach(sl=>{if(pav.has(sl))alreadyCoveredSlots.add(sl);});
+  }
+  const remainingSlots=slots.filter(sl=>!alreadyCoveredSlots.has(sl));
+
   // How many of the block's slots does this staff member's availability cover?
   function getAvailSlots(sid){
     const av=new Set(gsN(sid)?.availability[day]||[]);
     return slots.filter(sl=>av.has(sl));
   }
+  // What portion of the REMAINING uncovered slots can this staff fill?
+  function getContribSlots(sid){
+    const av=new Set(gsN(sid)?.availability[day]||[]);
+    const pool=remainingSlots.length?remainingSlots:slots;
+    return pool.filter(sl=>av.has(sl));
+  }
   function slotEndDisplay(slotTime,cap){
     const idx=TIMES.indexOf(slotTime);const next=TIMES[idx+1];
     return(next&&t2m(next)<=t2m(cap))?next:cap;
   }
-  function descAvail(availSlots){
-    if(!availSlots.length)return null;
-    const mins=availSlots.length*15;
-    const hrs=mins>=60?Math.floor(mins/60)+'h'+(mins%60?' '+mins%60+'m':''):(mins+'m');
-    // End time = next 15-min boundary after last covered slot, capped at block end
-    const lastSlot=availSlots[availSlots.length-1];
-    const lastIdx=TIMES.indexOf(lastSlot);
-    const nextSlot=TIMES[lastIdx+1];
-    const displayEnd=nextSlot&&t2m(nextSlot)<=t2m(blockTo)?nextSlot:blockTo;
-    return`${availSlots[0]} \u2013 ${displayEnd} (${hrs})`;
+  // Describe the time range a staff member would cover (their contribution to the gap)
+  function descContrib(contribSlots){
+    if(!contribSlots.length)return null;
+    const from=contribSlots[0];
+    const displayEnd=slotEndDisplay(contribSlots[contribSlots.length-1],blockTo);
+    const mins=contribSlots.length*15;
+    const dur=mins>=60?Math.floor(mins/60)+'h'+(mins%60?' '+mins%60+'m':''):(mins+'m');
+    return`Would cover ${from} \u2013 ${displayEnd} (${dur})`;
   }
 
   function staffRow(sid,subText,isCur,hasConflict,note,extraStyle,mode){
@@ -422,13 +436,15 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
 
   // 2. Pod — partial (≥1hr)
   if(podPartial.length){
-    html+='<div class="modal-section">🕐 Pod — partially available (≥1hr)</div>';
+    html+='<div class="modal-section">🕐 Pod — partially available</div>';
     podPartial.forEach(o=>{
-      const desc=descAvail(o.av)||'Partial';
+      const contrib=getContribSlots(o.sid);
+      if(!contrib.length)return;
       const alreadyAdded=splits&&splits.some(sp=>sp.sid===o.sid);
+      const desc=alreadyAdded?'✓ Already added':descContrib(contrib)||'Partial';
       const note=alreadyAdded
-        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">✓ Already in coverage</div>`
-        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block — click to add their portion</div>`;
+        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">Already in coverage</div>`
+        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`;
       html+=staffRow(o.sid,desc,alreadyAdded,false,note,null,'partial');
     });
   }
@@ -451,14 +467,16 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
 
   // 5. Non-pod — partial (≥1hr), no conflict
   if(npPartial.length){
-    html+=`<div class="modal-section">🕐 Not in pod — partially free (≥1hr)</div>`;
+    html+=`<div class="modal-section">🕐 Not in pod — partially free</div>`;
     html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">Available for part of this block with no conflicts.</div>`;
     npPartial.forEach(o=>{
-      const desc=descAvail(o.av)||'Partial';
+      const contrib=getContribSlots(o.sid);
+      if(!contrib.length)return;
       const alreadyAdded=splits&&splits.some(sp=>sp.sid===o.sid);
+      const desc=alreadyAdded?'✓ Already added':descContrib(contrib)||'Partial';
       const note=alreadyAdded
-        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">✓ Already in coverage</div>`
-        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block — click to add their portion</div>`;
+        ?`<div style="font-size:10px;color:#1D9E75;margin-top:2px;font-weight:600">Already in coverage</div>`
+        :`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`;
       html+=staffRow(o.sid,desc,alreadyAdded,false,note,null,'partial');
     });
   }
@@ -487,28 +505,52 @@ function doAssign(cid,day,blockIdx,newSid,tempId){
   markDirty();closeModal();render();
 }
 
-// Assign a staff member to cover only the slots they're available for within a block
+// Assign a staff member to cover only the uncovered slots they're available for
 function doAssignPartial(cid,day,blockIdx,newSid,tempId){
   const blk=getBlk(cid,day,blockIdx,tempId);
   if(!blk)return;
   const blockSlots=blk.slots||slotsInBlock(blk.from,blk.to);
+  // Find already covered slots from existing splits
+  const coveredSlots=new Set();
+  if(blk.splits){
+    blk.splits.filter(sp=>sp.sid!==newSid).forEach(sp=>
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(blockSlots.includes(sl))coveredSlots.add(sl);})
+    );
+  } else if(blk.staffId&&blk.staffId!==newSid){
+    const pav=new Set(gsN(blk.staffId)?.availability[day]||[]);
+    blockSlots.forEach(sl=>{if(pav.has(sl))coveredSlots.add(sl);});
+  }
+  // Staff covers the uncovered slots they're available for
   const staffAvail=new Set(gsN(newSid)?.availability[day]||[]);
-  const coverSlots=blockSlots.filter(sl=>staffAvail.has(sl));
+  const remaining=blockSlots.filter(sl=>!coveredSlots.has(sl));
+  const coverSlots=(remaining.length?remaining:blockSlots).filter(sl=>staffAvail.has(sl));
   if(!coverSlots.length)return;
-  // Convert covered slots to a time range
+  // Convert to time range
   const from=coverSlots[0];
   const lastIdx=TIMES.indexOf(coverSlots[coverSlots.length-1]);
   const to=TIMES[lastIdx+1]||blk.to;
-  // Init splits if needed, remove any existing entry for this staff, add new
-  if(!blk.splits)blk.splits=blk.staffId?[{sid:blk.staffId,from:blk.from,to:blk.to}]:[];
+  // Build splits
+  if(!blk.splits){
+    // First split: existing staff covers their portion, new staff covers theirs
+    blk.splits=[];
+    if(blk.staffId){
+      const existAv=new Set(gsN(blk.staffId)?.availability[day]||[]);
+      const existSlots=blockSlots.filter(sl=>existAv.has(sl));
+      if(existSlots.length){
+        const ef=existSlots[0];
+        const elIdx=TIMES.indexOf(existSlots[existSlots.length-1]);
+        const et=TIMES[elIdx+1]||blk.to;
+        blk.splits.push({sid:blk.staffId,from:ef,to:et});
+      }
+    }
+  }
+  // Remove existing entry for this staff, add updated one
   blk.splits=blk.splits.filter(sp=>sp.sid!==newSid);
   blk.splits.push({sid:newSid,from,to});
   blk.splits.sort((a,b)=>t2m(a.from)-t2m(b.from));
-  // Set primary staffId to first assigned
   blk.staffId=blk.splits[0].sid;
   markDirty();
-  // Re-render just the modal body so user can keep adding staff
-  renderAssignModalBody(cid,day,blockIdx,tempId,blk);
+  openAssignModal(cid,day,blockIdx,!!tempId,tempId);
   render();
 }
 
@@ -577,10 +619,11 @@ function bestForSlot(cid,day,slot,excl){const pod=S.pods[cid]||[];const res=[];p
 function todayDay(){const d=ALL_DAYS[new Date().getDay()];return DAYS.includes(d)?d:DAYS[0];}
 function go(t){S.tab=t;document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));render();}
 function fmtBlock(blk){return blk.from+(blk.from!==blk.to?' \u2013 '+blk.to:'');}
-function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;(c.schedule[day]||[]).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,isTemp:false,blockIdx:idx});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c||S.calledOutClients.includes(tb.cid))return;out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,isTemp:true,tempId:tb.id,label:tb.label});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
+function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;(c.schedule[day]||[]).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,splits:blk.splits||null,isTemp:false,blockIdx:idx});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c||S.calledOutClients.includes(tb.cid))return;out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,splits:tb.splits||null,isTemp:true,tempId:tb.id,label:tb.label,slots:tb.slots});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
 
 function getPartialGaps(bl,day){
-  if(S.calledOut.includes(bl.staffId))return null;
+  // Skip if no staff assigned at all
+  if(!bl.staffId&&(!bl.splits||!bl.splits.length))return null;
   const blockFrom=bl.from, blockTo=bl.to;
   const allSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
   if(!allSlots.length)return null;
