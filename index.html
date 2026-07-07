@@ -1052,7 +1052,7 @@ function rAG(s){
     assignedBlocks[tb.day].push({clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to});
   });
 
-  // For each day build a slot->blocks map
+  // Build slot->blocks map per day
   const slotMap={};
   DAYS.forEach(d=>{
     slotMap[d]={};
@@ -1064,177 +1064,136 @@ function rAG(s){
     });
   });
 
-  // For each day, figure out the SEGMENTS to render per column.
-  // A segment is a contiguous run of slots that belong to the same set of blocks.
-  // We'll split each day's blocks into non-overlapping + overlap segments.
-  // We use a two-column approach for each day: if there are 2 blocks we show col A and col B.
-  // For simplicity: support up to 2 simultaneous blocks per day (covers 99% of real cases).
-  // Segments: for each day produce an ordered list of {from, to, blocks:[]} runs.
-
-  function getSegments(d){
-    const blocks=assignedBlocks[d]||[];
-    if(!blocks.length) return [];
-    // Collect all boundary times
-    const times=new Set();
-    blocks.forEach(blk=>{
-      slotsInBlock(blk.from,blk.to).forEach(sl=>times.add(sl));
-    });
-    const sorted=[...times].sort((a,b)=>t2m(a)-t2m(b));
-    if(!sorted.length) return [];
-    // Group consecutive slots with same block membership
+  // For each day produce an ordered list of visual segments:
+  // Each segment = {from, to, slots[], type:'avail'|'empty'|'session'|'conflict', blocks[]}
+  // We walk TIMES top to bottom and group consecutive slots with identical state.
+  function getDaySegments(d){
     const segs=[];
     let cur=null;
-    sorted.forEach(sl=>{
-      const blks=slotMap[d][sl]||[];
-      const key=blks.map(b=>b.clientName).sort().join('|');
+    TIMES.forEach(t=>{
+      const av=(s.availability[d]||[]).includes(t);
+      const blocks=slotMap[d][t]||[];
+      let type,key;
+      if(blocks.length>1){
+        type='conflict';
+        key='conflict:'+blocks.map(b=>b.clientName).sort().join('|');
+      } else if(blocks.length===1){
+        type='session';
+        key='session:'+blocks[0].clientName;
+      } else if(av){
+        type='avail'; key='avail';
+      } else {
+        type='empty'; key='empty';
+      }
       if(!cur||cur.key!==key){
         if(cur) segs.push(cur);
-        cur={from:sl,to:sl,key,blocks:blks,slots:[sl]};
+        cur={from:t,to:t,slots:[t],type,key,blocks:[...blocks]};
       } else {
-        cur.to=sl; cur.slots.push(sl);
+        cur.to=t; cur.slots.push(t);
       }
     });
     if(cur) segs.push(cur);
     return segs;
   }
 
-  const SLOT_H=22, LABEL_W=135;
+  const SLOT_H=22, COL_W=110, LABEL_W=135;
 
   let out='';
   out+=`<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.625rem;font-size:10px;color:#777">
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Scheduled</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:0.5px solid #85B7EB;display:inline-block"></span>Available</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f0f0ee;display:inline-block"></span>Unavailable</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #D85A30;display:inline-block"></span>&#x26A0; Conflict</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1.5px solid #D85A30;display:inline-block"></span>&#x26A0; Conflict</span>
   </div>`;
 
-  // Build the grid using a table.
-  // Each "day" gets up to 2 sub-columns if there are overlapping blocks.
-  // We'll render one <table> per day side by side, wrapped in a flex container.
-
-  // First figure out max sub-columns per day
-  const dayCols={};
+  out+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:${LABEL_W+COL_W*5}px">`;
+  out+=`<thead><tr>`;
+  out+=`<th style="width:${LABEL_W}px;background:#fff;position:sticky;top:0;z-index:3;border-right:1px solid rgba(0,0,0,.08)"></th>`;
   DAYS.forEach(d=>{
-    const segs=getSegments(d);
-    const maxSimul=segs.reduce((m,seg)=>Math.max(m,seg.blocks.length),0);
-    dayCols[d]=Math.max(maxSimul,1);
-  });
-
-  // Total cols: label + sum of day cols
-  const totalDayCols=DAYS.reduce((s,d)=>s+dayCols[d],0);
-  const COL_W=Math.max(80, Math.floor(500/totalDayCols));
-
-  out+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:${LABEL_W+COL_W*totalDayCols}px">`;
-
-  // Header: label + day headers spanning their sub-cols
-  out+=`<thead><tr><th rowspan="2" style="width:${LABEL_W}px;background:#fff;position:sticky;top:0;z-index:3;border-right:1px solid rgba(0,0,0,.08)"></th>`;
-  DAYS.forEach(d=>{
-    const nc=dayCols[d];
-    out+=`<th colspan="${nc}" style="text-align:center;font-size:10px;font-weight:500;color:#888;padding:4px 3px;text-transform:uppercase;background:#fff;position:sticky;top:0;z-index:2;border-bottom:0.5px solid rgba(0,0,0,.1)">${d}${nc>1?' <span style="color:#D85A30;font-size:9px">&#x26A0;</span>':''}</th>`;
-  });
-  out+=`</tr><tr>`;
-  DAYS.forEach(d=>{
-    const nc=dayCols[d];
-    const segs=getSegments(d);
-    const blocks=assignedBlocks[d]||[];
-    if(nc===1){
-      out+=`<th style="width:${COL_W}px;font-size:9px;color:#aaa;padding:2px;background:#fff;position:sticky;top:22px;z-index:2"></th>`;
-    } else {
-      // Label each sub-col with the block it primarily belongs to
-      for(let i=0;i<nc;i++){
-        const blk=blocks[i];
-        const lbl=blk?blk.clientName.split(' ')[0]:'';
-        out+=`<th style="width:${COL_W}px;font-size:9px;color:#888;padding:2px;background:#fff;position:sticky;top:22px;z-index:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lbl}</th>`;
-      }
-    }
+    const hasConflict=TIMES.some(t=>(slotMap[d][t]||[]).length>1);
+    out+=`<th style="width:${COL_W}px;text-align:center;font-size:10px;font-weight:500;color:#888;padding:4px 3px;text-transform:uppercase;background:#fff;position:sticky;top:0;z-index:2">${d}${hasConflict?' <span style="color:#D85A30">&#x26A0;</span>':''}</th>`;
   });
   out+=`</tr></thead><tbody>`;
 
-  // For each day pre-compute which block goes in which sub-column.
-  // Sub-col assignment: sort blocks by start time; block[0]=col0, block[1]=col1.
-  const dayBlockOrder={};
-  DAYS.forEach(d=>{
-    dayBlockOrder[d]=(assignedBlocks[d]||[]).slice().sort((a,b)=>t2m(a.from)-t2m(b.from));
-  });
-
-  // consumed[d][col] = Set of slots already rendered via rowspan
+  // consumed[d] = Set of slots already covered by a rowspan
   const consumed={};
-  DAYS.forEach(d=>{ consumed[d]={}; for(let i=0;i<dayCols[d];i++) consumed[d][i]=new Set(); });
+  DAYS.forEach(d=>{ consumed[d]=new Set(); });
 
   TIMES.forEach(t=>{
     out+=`<tr>`;
+    // Time range label
     const nextIdx=TIMES.indexOf(t)+1;
     const nextT=nextIdx<TIMES.length?TIMES[nextIdx]:null;
-    const labelText=nextT?t+' \u2013 '+nextT:t;
-    out+=`<td style="font-size:9px;color:#999;text-align:right;padding:0 8px 0 0;height:${SLOT_H}px;white-space:nowrap;vertical-align:middle;border-right:1px solid rgba(0,0,0,.08)">${labelText}</td>`;
+    out+=`<td style="font-size:9px;color:#999;text-align:right;padding:0 8px 0 0;height:${SLOT_H}px;white-space:nowrap;vertical-align:middle;border-right:1px solid rgba(0,0,0,.08)">${nextT?t+' \u2013 '+nextT:t}</td>`;
 
     DAYS.forEach(d=>{
-      const nc=dayCols[d];
-      const blocks=dayBlockOrder[d];
+      if(consumed[d].has(t)) return;
+
       const av=(s.availability[d]||[]).includes(t);
+      const blocks=slotMap[d][t]||[];
 
-      for(let col=0;col<nc;col++){
-        if(consumed[d][col].has(t)) continue;
-
-        const blk=blocks[col]; // block assigned to this sub-column
-        const inThisBlock=blk&&(slotMap[d][t]||[]).some(b=>b===blk);
-
-        if(!inThisBlock){
-          // No block here — show availability or empty
-          out+=av
-            ?`<td style="background:#E6F1FB;border:0.5px solid #85B7EB;height:${SLOT_H}px"></td>`
-            :`<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
-          continue;
-        }
-
-        // This slot belongs to blk — check if it's also in another block (conflict)
-        const allBlocksHere=(slotMap[d][t]||[]);
-        const isConflictSlot=allBlocksHere.length>1;
-
-        // Find consecutive slots for this block starting at t that share the same conflict status
-        const blockSlots=slotsInBlock(blk.from,blk.to);
-        const startIdx=blockSlots.indexOf(t);
-        if(startIdx<0){
-          out+=`<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
-          continue;
-        }
-        // Run forward while conflict status stays the same
-        let runEnd=startIdx;
-        while(runEnd+1<blockSlots.length){
-          const nextSl=blockSlots[runEnd+1];
-          const nextConflict=(slotMap[d][nextSl]||[]).length>1;
-          if(nextConflict!==isConflictSlot) break;
-          runEnd++;
-        }
-        const runSlots=blockSlots.slice(startIdx,runEnd+1);
-        const rowspan=runSlots.length;
-        runSlots.slice(1).forEach(sl=>consumed[d][col].add(sl));
-        const blockH=rowspan*SLOT_H;
-        const shortName=blk.clientName.length>12?blk.clientName.slice(0,11)+'\u2026':blk.clientName;
-        const segFrom=runSlots[0];
-        const segTo=runSlots[runSlots.length-1];
-
-        if(isConflictSlot){
-          // Orange conflict segment
-          const otherNames=allBlocksHere.filter(b=>b!==blk).map(b=>b.clientName).join(', ');
-          out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
-            <div style="background:#FAECE7;border:2px solid #D85A30;border-radius:5px;height:${blockH-6}px;padding:3px 5px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
-              <div style="font-size:10px;font-weight:700;color:#D85A30">&#x26A0; ${shortName}</div>
-              <div style="font-size:9px;color:#993C1D;margin-top:1px">conflicts with</div>
-              <div style="font-size:9px;color:#993C1D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${otherNames}</div>
-              <div style="font-size:9px;color:#993C1D;margin-top:1px">${segFrom} \u2013 ${segTo}</div>
-            </div>
-          </td>`;
-        } else {
-          // Normal teal segment
-          out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
-            <div style="background:#9FE1CB;border:1px solid #1D9E75;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
-              <div style="font-size:11px;font-weight:600;color:#04342C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortName}</div>
-              <div style="font-size:10px;color:#0F6E56;margin-top:2px">${blk.from} \u2013 ${blk.to}</div>
-            </div>
-          </td>`;
-        }
+      if(blocks.length===0){
+        // No session — availability or empty
+        out+=av
+          ?`<td style="background:#E6F1FB;border:0.5px solid #85B7EB;height:${SLOT_H}px"></td>`
+          :`<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
+        return;
       }
+
+      if(blocks.length>1){
+        // CONFLICT — find how many consecutive slots stay conflicted
+        let runEnd=TIMES.indexOf(t);
+        while(runEnd+1<TIMES.length){
+          const next=TIMES[runEnd+1];
+          if((slotMap[d][next]||[]).length>1) runEnd++;
+          else break;
+        }
+        const runSlots=TIMES.slice(TIMES.indexOf(t),runEnd+1);
+        const rowspan=runSlots.length;
+        runSlots.slice(1).forEach(sl=>consumed[d].add(sl));
+        const blockH=rowspan*SLOT_H;
+        const names=blocks.map(b=>b.clientName);
+        const displayNames=names.join(' & ');
+        const shortNames=displayNames.length>20?displayNames.slice(0,19)+'\u2026':displayNames;
+        const segTo=runSlots[runSlots.length-1];
+        out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
+          <div style="background:#FAECE7;border:2px solid #D85A30;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
+            <div style="font-size:11px;font-weight:700;color:#D85A30;white-space:nowrap">&#x26A0; Conflict</div>
+            <div style="font-size:10px;color:#993C1D;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortNames}</div>
+            <div style="font-size:9px;color:#993C1D;margin-top:1px">${t} \u2013 ${segTo}</div>
+          </div>
+        </td>`;
+        return;
+      }
+
+      // Single block — find consecutive slots for the same block
+      const blk=blocks[0];
+      const blockSlots=slotsInBlock(blk.from,blk.to);
+      const startIdx=blockSlots.indexOf(t);
+      if(startIdx<0){
+        out+=`<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
+        return;
+      }
+      // Run forward while: same block AND not a conflict slot
+      let runEnd=startIdx;
+      while(runEnd+1<blockSlots.length){
+        const next=blockSlots[runEnd+1];
+        if(consumed[d].has(next)) break;
+        if((slotMap[d][next]||[]).length>1) break; // stop before conflict
+        if((slotMap[d][next]||[])[0]!==blk) break; // different block starts
+        runEnd++;
+      }
+      const runSlots=blockSlots.slice(startIdx,runEnd+1);
+      const rowspan=runSlots.length;
+      runSlots.slice(1).forEach(sl=>consumed[d].add(sl));
+      const blockH=rowspan*SLOT_H;
+      const shortName=blk.clientName.length>14?blk.clientName.slice(0,13)+'\u2026':blk.clientName;
+      out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
+        <div style="background:#9FE1CB;border:1px solid #1D9E75;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
+          <div style="font-size:11px;font-weight:600;color:#04342C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortName}</div>
+          <div style="font-size:10px;color:#0F6E56;margin-top:2px">${blk.from} \u2013 ${blk.to}</div>
+        </div>
+      </td>`;
     });
     out+=`</tr>`;
   });
