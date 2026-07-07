@@ -274,46 +274,65 @@ async function pushToPortal() {
 }
 
 async function pushStaffSchedules() {
-  // Build staff schedule rows — one row per staff per day they work
-  const rows = [];
+  const sessionRows = [];
+  const availRows = [];
+
   S.staff.forEach(s => {
     DAYS.forEach(d => {
-      // Find all client blocks this staff is assigned to on this day
-      const assigned = [];
+      // Push each individual assigned session block
       S.clients.forEach(c => {
         (c.schedule[d] || []).forEach(blk => {
           if(blk.splits && blk.splits.length) {
             blk.splits.forEach(sp => {
-              if(sp.sid === s.id) assigned.push({ from: sp.from, to: sp.to, client: c.name });
+              if(sp.sid === s.id)
+                sessionRows.push({ staff_name: s.name, day: d, start_time: sp.from, end_time: sp.to, client_name: c.name });
             });
           } else if(blk.staffId === s.id) {
-            assigned.push({ from: blk.from, to: blk.to, client: c.name });
+            sessionRows.push({ staff_name: s.name, day: d, start_time: blk.from, end_time: blk.to, client_name: c.name });
           }
         });
       });
-      if(!assigned.length) return;
-      assigned.sort((a,b) => t2m(a.from) - t2m(b.from));
-      const start = assigned[0].from;
-      const end = assigned[assigned.length-1].to;
-      const clients = assigned.map(a => a.client).join(', ');
-      rows.push({ staff_name: s.name, day: d, start_time: start, end_time: end, clients });
+
+      // Push availability window for this day
+      const avSlots = s.availability[d] || [];
+      if(avSlots.length) {
+        const avStart = avSlots[0];
+        const lastIdx = avSlots.length - 1;
+        const lastSlot = avSlots[lastIdx];
+        const lastSlotIdx = TIMES.indexOf(lastSlot);
+        const avEnd = TIMES[lastSlotIdx + 1] || lastSlot;
+        availRows.push({ staff_name: s.name, day: d, start_time: avStart, end_time: avEnd });
+      }
     });
   });
 
-  // Delete all existing staff schedule rows and replace
+  // Replace staff_schedules (sessions)
   await fetch(`${SUPABASE_URL}/rest/v1/staff_schedules?staff_name=neq.null`, {
     method: 'DELETE',
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
   });
-  if(rows.length > 0) {
+  if(sessionRows.length > 0) {
     await fetch(`${SUPABASE_URL}/rest/v1/staff_schedules`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify(rows)
+      body: JSON.stringify(sessionRows)
     });
   }
 
-  // Also push staff names list (for RBT profiles)
+  // Replace staff_availability
+  await fetch(`${SUPABASE_URL}/rest/v1/staff_availability?staff_name=neq.null`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+  });
+  if(availRows.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/staff_availability`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(availRows)
+    });
+  }
+
+  // Push staff names
   const staffNames = S.staff.map(s => ({ name: s.name }));
   await fetch(`${SUPABASE_URL}/rest/v1/staff_names?name=neq.null`, {
     method: 'DELETE',
