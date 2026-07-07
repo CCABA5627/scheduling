@@ -216,20 +216,37 @@ async function pushToPortal() {
     const today = new Date().toISOString().split('T')[0];
     const todayDay = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
     const rows = [];
+
     S.clients.forEach(c => {
+      if(S.calledOutClients.includes(c.id)) return;
       (c.schedule[todayDay] || []).forEach(blk => {
-        if (!blk.staffId) return;
-        const staffMember = gsN(blk.staffId);
-        if (!staffMember || S.calledOut.includes(blk.staffId)) return;
-        rows.push({ staff: staffMember.name, client: c.name, time: blk.from + ' \u2013 ' + blk.to, location: 'Center', date: today });
+        if(blk.splits && blk.splits.length) {
+          // Push each split staff member with their actual time range
+          blk.splits.forEach(sp => {
+            if(S.calledOut.includes(sp.sid)) return;
+            const staffMember = gsN(sp.sid);
+            if(!staffMember) return;
+            rows.push({ staff: staffMember.name, client: c.name, time: sp.from + ' \u2013 ' + sp.to, location: 'Center', date: today });
+          });
+        } else {
+          // Single staff assignment
+          if(!blk.staffId) return;
+          const staffMember = gsN(blk.staffId);
+          if(!staffMember || S.calledOut.includes(blk.staffId)) return;
+          rows.push({ staff: staffMember.name, client: c.name, time: blk.from + ' \u2013 ' + blk.to, location: 'Center', date: today });
+        }
       });
     });
-    (S.tempBlocks || []).filter(tb => tb.day === todayDay && tb.staffId).forEach(tb => {
+
+    // Temp blocks
+    (S.tempBlocks || []).filter(tb => tb.day === todayDay && tb.staffId && !S.calledOutClients.includes(tb.cid)).forEach(tb => {
+      if(S.calledOut.includes(tb.staffId)) return;
       const staffMember = gsN(tb.staffId);
       const client = gcN(tb.cid);
-      if (!staffMember || !client) return;
+      if(!staffMember || !client) return;
       rows.push({ staff: staffMember.name, client: client.name, time: tb.from + ' \u2013 ' + tb.to, location: 'Center', date: today });
     });
+
     await fetch(`${SUPABASE_URL}/rest/v1/assignments?date=eq.${today}`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
