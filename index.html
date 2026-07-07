@@ -303,68 +303,121 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   (c?.schedule[day]||[]).forEach((blk2,i2)=>{if(!isTemp&&i2===blockIdx)return;if(blk2.staffId)usedOther.add(blk2.staffId);});
   S.tempBlocks.forEach(tb=>{if(tb.cid!==cid||tb.day!==day||tb.id===tempId)return;if(tb.staffId)usedOther.add(tb.staffId);});
 
-  // Pod members — split into available and unavailable
-  const avail=[],unavail=[];
-  pod.forEach(sid=>{const s=gsN(sid);if(!s)return;const sAvail=new Set(s.availability[day]||[]);const covers=slots.every(sl=>sAvail.has(sl));if(covers)avail.push({sid,score:overlap(sid,cid),usedOther:usedOther.has(sid)});else unavail.push({sid});});
-  avail.sort((a,b)=>a.usedOther!==b.usedOther?(a.usedOther?1:-1):b.score-a.score);
+  // Conflict check that respects cancelled clients
+  function chkConflict(sid,newSlots,excCid,excBlockIdx,excTempId){
+    const conflicts=[];const ns=new Set(newSlots);
+    S.clients.forEach(cl=>{
+      if(S.calledOutClients.includes(cl.id))return;
+      (cl.schedule[day]||[]).forEach((blk,idx)=>{
+        if(blk.staffId!==sid)return;
+        if(cl.id===excCid&&idx===excBlockIdx)return;
+        const ov=slotsInBlock(blk.from,blk.to).filter(s=>ns.has(s));
+        if(ov.length>0)conflicts.push({name:cl.name,from:blk.from,to:blk.to});
+      });
+    });
+    (S.tempBlocks||[]).forEach(tb=>{
+      if(tb.staffId!==sid||tb.day!==day)return;
+      if(tb.id===excTempId)return;
+      if(S.calledOutClients.includes(tb.cid))return;
+      const ov=tb.slots.filter(s=>ns.has(s));
+      if(ov.length>0)conflicts.push({name:gcN(tb.cid)?.name||'?',from:tb.from,to:tb.to});
+    });
+    return{hasConflict:conflicts.length>0,conflicts};
+  }
 
-  // Non-pod staff who cover all slots and have no scheduling conflict
-  const nonPodAvail=[];
-  S.staff.forEach(s=>{
-    if(podSet.has(s.id)) return; // already in pod section
-    const sAvail=new Set(s.availability[day]||[]);
-    if(!slots.every(sl=>sAvail.has(sl))) return; // not available for full block
-    const conflict=checkConflict(s.id,day,slots,cid,isTemp?-1:blockIdx,tempId||null);
-    if(!conflict.hasConflict) nonPodAvail.push({sid:s.id,name:s.name});
-  });
+  // How many of the block's slots does this staff member's availability cover?
+  function getAvailSlots(sid){
+    const av=new Set(gsN(sid)?.availability[day]||[]);
+    return slots.filter(sl=>av.has(sl));
+  }
+  function descAvail(availSlots){
+    if(!availSlots.length)return null;
+    const mins=availSlots.length*15;
+    const hrs=mins>=60?Math.floor(mins/60)+'h'+(mins%60?' '+mins%60+'m':''):(mins+'m');
+    return`${availSlots[0]} \u2013 ${availSlots[availSlots.length-1]} (${hrs})`;
+  }
 
-  // Build HTML helper for a staff option row
-  function staffRow(sid,label,subText,isCur,hasConflict,conflictNote){
+  function staffRow(sid,subText,isCur,hasConflict,note){
     const s=gsN(sid);
-    const borderStyle=hasConflict?'border:1.5px solid #F0997B;':'';
-    return`<div class="staff-opt${isCur?' current':''}" style="${borderStyle}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')">
+    return`<div class="staff-opt${isCur?' current':''}" style="${hasConflict?'border:1.5px solid #F0997B;':''}" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')">
       <div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div>
-      <div style="flex:1">
-        <div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div>
-        <div class="staff-opt-sub">${subText}</div>
-        ${conflictNote||''}
-      </div>
+      <div style="flex:1"><div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div>
+      <div class="staff-opt-sub">${subText}</div>${note||''}</div>
     </div>`;
   }
 
+  // Categorise pod members
+  const podFull=[],podPartial=[],podNone=[];
+  pod.forEach(sid=>{
+    const s=gsN(sid);if(!s)return;
+    const av=getAvailSlots(sid);
+    if(slots.every(sl=>av.includes(sl)))podFull.push({sid,score:overlap(sid,cid),usedOther:usedOther.has(sid)});
+    else if(av.length>=4)podPartial.push({sid,av});
+    else podNone.push({sid});
+  });
+  podFull.sort((a,b)=>a.usedOther!==b.usedOther?(a.usedOther?1:-1):b.score-a.score);
+
+  // Non-pod staff with full or partial (≥1hr) availability and no conflict
+  const npFull=[],npPartial=[];
+  S.staff.forEach(s=>{
+    if(podSet.has(s.id))return;
+    const av=getAvailSlots(s.id);if(!av.length)return;
+    const conflict=chkConflict(s.id,av,cid,isTemp?-1:blockIdx,tempId||null);
+    if(conflict.hasConflict)return;
+    if(slots.every(sl=>av.includes(sl)))npFull.push({sid:s.id,av});
+    else if(av.length>=4)npPartial.push({sid:s.id,av});
+  });
+
   let html='';
 
-  // Section 1: Pod members available
-  if(avail.length){
-    html+='<div class="modal-section">✅ Pod — available for this block</div>';
-    avail.forEach(o=>{
-      const conflict=checkConflict(o.sid,day,slots,cid,isTemp?-1:blockIdx,tempId||null);
-      let conflictNote='';
-      if(conflict.hasConflict){const cnames=conflict.conflicts.map(c=>c.name+' '+c.from+'-'+c.to).join(', ');conflictNote=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Double-booked: ${cnames}</div>`;}
-      else if(o.usedOther){conflictNote=`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`;}
-      const isCur=o.sid===currentSid;
-      html+=staffRow(o.sid,'Pod member',o.score+' overlap slots',isCur,conflict.hasConflict,conflictNote);
+  // 1. Pod — full block
+  if(podFull.length){
+    html+='<div class="modal-section">✅ Pod — covers full block</div>';
+    podFull.forEach(o=>{
+      const cf=chkConflict(o.sid,slots,cid,isTemp?-1:blockIdx,tempId||null);
+      let note='';
+      if(cf.hasConflict){note=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Overlap: ${cf.conflicts.map(x=>x.name+' '+x.from+'-'+x.to).join(', ')}</div>`;}
+      else if(o.usedOther){note=`<div style="font-size:10px;color:#888;margin-top:2px">Also on another block today</div>`;}
+      html+=staffRow(o.sid,o.score+' overlap slots',o.sid===currentSid,cf.hasConflict,note);
     });
   }
 
-  // Section 2: Pod members NOT available
-  if(unavail.length){
-    html+='<div class="modal-section">❌ Pod — not available for full block</div>';
-    unavail.forEach(o=>{const s=gsN(o.sid);html+=`<div class="staff-opt unavail"><div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div><div class="staff-opt-name">${s.name}</div><div class="staff-opt-sub">Unavailable during this time</div></div>`;});
-  }
-
-  // Section 3: Non-pod staff who are free
-  if(nonPodAvail.length){
-    html+=`<div class="modal-section" style="margin-top:10px;">🔓 Not in pod — but free during this block</div>`;
-    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">These staff are available but not in ${c?.name}'s pod. Adding them here only assigns this one block — go to Pods tab to add them to the pod permanently.</div>`;
-    nonPodAvail.forEach(o=>{
-      const isCur=o.sid===currentSid;
-      const usedNote=usedOther.has(o.sid)?`<div style="font-size:10px;color:#888;margin-top:2px">Assigned to another block today</div>`:'';
-      html+=staffRow(o.sid,'Not in pod','Available & no conflicts',isCur,false,usedNote);
+  // 2. Pod — partial (≥1hr)
+  if(podPartial.length){
+    html+='<div class="modal-section">🕐 Pod — partially available (≥1hr)</div>';
+    podPartial.forEach(o=>{
+      const desc=descAvail(o.av)||'Partial';
+      html+=staffRow(o.sid,desc,o.sid===currentSid,false,`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`);
     });
   }
 
-  if(!pod.length&&!nonPodAvail.length) html='<div style="font-size:12px;color:#888;padding:.5rem 0">No pod members yet and no other staff available. Go to Clients tab to set up this client\'s pod.</div>';
+  // 3. Pod — not available
+  if(podNone.length){
+    html+='<div class="modal-section">❌ Pod — not available</div>';
+    podNone.forEach(o=>{const s=gsN(o.sid);html+=`<div class="staff-opt unavail"><div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div><div><div class="staff-opt-name">${s.name}</div><div class="staff-opt-sub">No availability during this time</div></div></div>`;});
+  }
+
+  // 4. Non-pod — full, no conflict
+  if(npFull.length){
+    html+=`<div class="modal-section" style="margin-top:10px;">🔓 Not in pod — free for full block</div>`;
+    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">No conflicts. Go to Pods tab to add permanently.</div>`;
+    npFull.forEach(o=>{
+      const note=usedOther.has(o.sid)?`<div style="font-size:10px;color:#888;margin-top:2px">Also on another block today</div>`:'';
+      html+=staffRow(o.sid,'Available — no conflicts',o.sid===currentSid,false,note);
+    });
+  }
+
+  // 5. Non-pod — partial (≥1hr), no conflict
+  if(npPartial.length){
+    html+=`<div class="modal-section">🕐 Not in pod — partially free (≥1hr)</div>`;
+    html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">Available for part of this block with no conflicts.</div>`;
+    npPartial.forEach(o=>{
+      const desc=descAvail(o.av)||'Partial';
+      html+=staffRow(o.sid,desc,o.sid===currentSid,false,`<div style="font-size:10px;color:#EF9F27;margin-top:2px">Doesn't cover full block</div>`);
+    });
+  }
+
+  if(!html)html='<div style="font-size:12px;color:#888;padding:.5rem 0">No staff available during this time.</div>';
   if(currentSid||isTemp)html+=`<button class="unassign-btn" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">Remove assignment</button>`;
   if(isTemp)html+=`<button class="unassign-btn" style="color:#534AB7;border-color:#534AB7;margin-top:4px" onclick="deleteTempBlock('${tempId}')">Delete this temp block</button>`;
   document.getElementById('modal-body').innerHTML=html;
