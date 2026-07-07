@@ -221,7 +221,6 @@ async function pushToPortal() {
       if(S.calledOutClients.includes(c.id)) return;
       (c.schedule[todayDay] || []).forEach(blk => {
         if(blk.splits && blk.splits.length) {
-          // Push each split staff member with their actual time range
           blk.splits.forEach(sp => {
             if(S.calledOut.includes(sp.sid)) return;
             const staffMember = gsN(sp.sid);
@@ -229,7 +228,6 @@ async function pushToPortal() {
             rows.push({ staff: staffMember.name, client: c.name, time: sp.from + ' \u2013 ' + sp.to, location: 'Center', date: today });
           });
         } else {
-          // Single staff assignment
           if(!blk.staffId) return;
           const staffMember = gsN(blk.staffId);
           if(!staffMember || S.calledOut.includes(blk.staffId)) return;
@@ -238,7 +236,6 @@ async function pushToPortal() {
       });
     });
 
-    // Temp blocks
     (S.tempBlocks || []).filter(tb => tb.day === todayDay && tb.staffId && !S.calledOutClients.includes(tb.cid)).forEach(tb => {
       if(S.calledOut.includes(tb.staffId)) return;
       const staffMember = gsN(tb.staffId);
@@ -259,6 +256,10 @@ async function pushToPortal() {
       });
       if (!res.ok) throw new Error('Insert failed: ' + res.status);
     }
+
+    // Also push staff schedules
+    await pushStaffSchedules();
+
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     status.textContent = '\u2713 Pushed ' + rows.length + ' assignments at ' + time;
     status.style.color = '#1D9E75';
@@ -270,6 +271,61 @@ async function pushToPortal() {
   }
   btn.disabled = false;
   btn.innerHTML = '&#x1F4E4; Push to Staff Portal';
+}
+
+async function pushStaffSchedules() {
+  // Build staff schedule rows — one row per staff per day they work
+  const rows = [];
+  S.staff.forEach(s => {
+    DAYS.forEach(d => {
+      // Find all client blocks this staff is assigned to on this day
+      const assigned = [];
+      S.clients.forEach(c => {
+        (c.schedule[d] || []).forEach(blk => {
+          if(blk.splits && blk.splits.length) {
+            blk.splits.forEach(sp => {
+              if(sp.sid === s.id) assigned.push({ from: sp.from, to: sp.to, client: c.name });
+            });
+          } else if(blk.staffId === s.id) {
+            assigned.push({ from: blk.from, to: blk.to, client: c.name });
+          }
+        });
+      });
+      if(!assigned.length) return;
+      assigned.sort((a,b) => t2m(a.from) - t2m(b.from));
+      const start = assigned[0].from;
+      const end = assigned[assigned.length-1].to;
+      const clients = assigned.map(a => a.client).join(', ');
+      rows.push({ staff_name: s.name, day: d, start_time: start, end_time: end, clients });
+    });
+  });
+
+  // Delete all existing staff schedule rows and replace
+  await fetch(`${SUPABASE_URL}/rest/v1/staff_schedules?staff_name=neq.null`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+  });
+  if(rows.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/staff_schedules`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(rows)
+    });
+  }
+
+  // Also push staff names list (for RBT profiles)
+  const staffNames = S.staff.map(s => ({ name: s.name }));
+  await fetch(`${SUPABASE_URL}/rest/v1/staff_names?name=neq.null`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+  });
+  if(staffNames.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/staff_names`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(staffNames)
+    });
+  }
 }
 
 // ===================== SCHEDULER =====================
