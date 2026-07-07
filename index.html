@@ -1052,91 +1052,130 @@ function rAG(s){
     assignedBlocks[tb.day].push({clientName:(gcN(tb.cid)?.name||'?')+' (temp)',from:tb.from,to:tb.to});
   });
 
-  // Build slot-level assigned lookup
-  const assignedSlots={};
-  DAYS.forEach(d=>{ assignedSlots[d]={}; });
-  assignedBlocks && Object.entries(assignedBlocks).forEach(([d,blocks])=>{
+  // Build slot-level map: day -> slot -> [block, block, ...]  (array so overlaps show multiple)
+  const slotMap={};
+  DAYS.forEach(d=>{ slotMap[d]={}; });
+  Object.entries(assignedBlocks).forEach(([d,blocks])=>{
     blocks.forEach(blk=>{
-      slotsInBlock(blk.from,blk.to).forEach(slot=>{ assignedSlots[d][slot]=blk; });
+      slotsInBlock(blk.from,blk.to).forEach(slot=>{
+        if(!slotMap[d][slot]) slotMap[d][slot]=[];
+        slotMap[d][slot].push(blk);
+      });
     });
   });
 
-  // Grid using CSS grid with row span for teal blocks
-  // We'll use a table-like approach: one row per 15-min slot, 7 columns (label + 5 days)
-  // For assigned blocks we span multiple rows using a separate overlay approach.
-  // Simpler: use a relative-positioned column with absolute teal blocks.
+  const SLOT_H=22;
+  const COL_W=110;
+  const LABEL_W=135;
 
-  const SLOT_H = 22; // px per 15-min slot
-  const COL_W = 110; // px per day column
-  const LABEL_W = 130; // px for time label column
-
-  // Pre-compute which slots are the START of an assigned block (to know where to draw the box)
-  // Also track which slots are "interior" of a block so we can skip them
-
-  let out = '';
-  out += `<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.625rem;font-size:10px;color:#777">
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Scheduled session</span>
+  let out='';
+  out+=`<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.625rem;font-size:10px;color:#777">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#9FE1CB;display:inline-block"></span>Scheduled</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:0.5px solid #85B7EB;display:inline-block"></span>Available</span>
     <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f0f0ee;display:inline-block"></span>Unavailable</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #D85A30;display:inline-block"></span>&#x26A0; Conflict</span>
   </div>`;
 
-  // Build the grid as a table for reliable row-spanning
-  out += `<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:${LABEL_W + COL_W*5}px">`;
-
-  // Header row
-  out += `<thead><tr><th style="width:${LABEL_W}px;min-width:${LABEL_W}px;font-size:10px;font-weight:500;color:#888;text-align:right;padding:4px 8px 4px 0;text-transform:uppercase;background:#fff;position:sticky;top:0;z-index:2"></th>`;
+  out+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:${LABEL_W+COL_W*5}px">`;
+  out+=`<thead><tr><th style="width:${LABEL_W}px;font-size:10px;font-weight:500;color:#888;text-align:right;padding:4px 8px 4px 0;background:#fff;position:sticky;top:0;z-index:2"></th>`;
   DAYS.forEach(d=>{
-    out += `<th style="width:${COL_W}px;text-align:center;font-size:10px;font-weight:500;color:#888;padding:4px 3px;text-transform:uppercase;background:#fff;position:sticky;top:0;z-index:2">${d}</th>`;
+    out+=`<th style="width:${COL_W}px;text-align:center;font-size:10px;font-weight:500;color:#888;padding:4px 3px;text-transform:uppercase;background:#fff;position:sticky;top:0;z-index:2">${d}</th>`;
   });
-  out += `</tr></thead><tbody>`;
+  out+=`</tr></thead><tbody>`;
 
-  // Track which day+slot cells are already consumed by a rowspan block
-  const consumed = {};
+  // Track consumed cells (interior of a rowspan block)
+  // consumed[d][slot] = true means skip this cell
+  const consumed={};
   DAYS.forEach(d=>{ consumed[d]=new Set(); });
 
-  TIMES.forEach(t=>{
-    const tMin = t2m(t);
-    const timeLabel = t; // e.g. "9:00 AM"
-    out += `<tr>`;
-    // Time label cell — show every slot as a range
-    const nextIdx = TIMES.indexOf(t)+1;
-    const nextT = TIMES[nextIdx] || t;
-    const labelText = t + (nextT!==t ? ' \u2013 '+nextT : '');
-    out += `<td style="font-size:9px;color:#999;text-align:right;padding:0 8px 0 0;height:${SLOT_H}px;white-space:nowrap;vertical-align:middle;border-right:1px solid rgba(0,0,0,.08)">${labelText}</td>`;
-
-    DAYS.forEach(d=>{
-      // Skip if consumed by a rowspan
-      if(consumed[d].has(t)){ return; }
-
-      const av = (s.availability[d]||[]).includes(t);
-      const asgn = assignedSlots[d]?.[t];
-
-      if(asgn && asgn.from === t){
-        // This is the START of an assigned block — calculate rowspan
-        const blockSlots = slotsInBlock(asgn.from, asgn.to);
-        const rowspan = blockSlots.length;
-        // Mark all subsequent slots in this block as consumed
-        blockSlots.slice(1).forEach(sl=>consumed[d].add(sl));
-        const blockH = rowspan * SLOT_H;
-        const shortName = asgn.clientName.length > 14 ? asgn.clientName.slice(0,13)+'\u2026' : asgn.clientName;
-        out += `<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
-          <div style="background:#9FE1CB;border:1px solid #1D9E75;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
-            <div style="font-size:11px;font-weight:600;color:#04342C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortName}</div>
-            <div style="font-size:10px;color:#0F6E56;margin-top:2px">${asgn.from} \u2013 ${asgn.to}</div>
-          </div>
-        </td>`;
-      } else if(asgn){
-        // Interior of a block — should have been consumed, but skip just in case
-      } else if(av){
-        out += `<td style="background:#E6F1FB;border:0.5px solid #85B7EB;height:${SLOT_H}px"></td>`;
-      } else {
-        out += `<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
-      }
+  // Pre-pass: find which slots have conflicts per day
+  const conflictSlots={};
+  DAYS.forEach(d=>{ conflictSlots[d]=new Set(); });
+  Object.entries(slotMap).forEach(([d,slots])=>{
+    Object.entries(slots).forEach(([slot,blocks])=>{
+      if(blocks.length>1) conflictSlots[d].add(slot);
     });
-    out += `</tr>`;
   });
 
-  out += `</tbody></table></div>`;
+  TIMES.forEach(t=>{
+    out+=`<tr>`;
+    // Time range label
+    const nextIdx=TIMES.indexOf(t)+1;
+    const nextT=nextIdx<TIMES.length?TIMES[nextIdx]:null;
+    const labelText=nextT?t+' \u2013 '+nextT:t;
+    out+=`<td style="font-size:9px;color:#999;text-align:right;padding:0 8px 0 0;height:${SLOT_H}px;white-space:nowrap;vertical-align:middle;border-right:1px solid rgba(0,0,0,.08)">${labelText}</td>`;
+
+    DAYS.forEach(d=>{
+      if(consumed[d].has(t)) return; // skip — interior of a rowspan
+
+      const av=(s.availability[d]||[]).includes(t);
+      const blocks=slotMap[d]?.[t]||[];
+      const isConflict=conflictSlots[d].has(t);
+
+      if(blocks.length===0){
+        // No session — just availability or empty
+        if(av){
+          out+=`<td style="background:#E6F1FB;border:0.5px solid #85B7EB;height:${SLOT_H}px"></td>`;
+        } else {
+          out+=`<td style="background:#f0f0ee;border:0.5px solid rgba(0,0,0,.07);height:${SLOT_H}px"></td>`;
+        }
+        return;
+      }
+
+      if(isConflict){
+        // CONFLICT: two or more blocks overlap on this slot
+        // Find the max extent of the overlapping blocks starting from this slot
+        // Show a conflict box spanning the full overlap range
+        // Find rowspan = how many consecutive slots are conflicted for any block starting here
+        // Get all blocks that include this slot
+        const conflictingBlocks=blocks;
+        // Span: from this slot to the end of the shortest overlapping block
+        const minTo=conflictingBlocks.reduce((min,blk)=>{
+          const toMin=t2m(blk.to);
+          return toMin<min?toMin:min;
+        }, Infinity);
+        // Slots from t up to (but not including) minTo
+        const spanSlots=TIMES.filter(sl=>t2m(sl)>=t2m(t)&&t2m(sl)<minTo);
+        const rowspan=Math.max(spanSlots.length,1);
+        // Mark consumed
+        spanSlots.slice(1).forEach(sl=>consumed[d].add(sl));
+        const blockH=rowspan*SLOT_H;
+        const names=conflictingBlocks.map(b=>b.clientName).join(' & ');
+        const shortNames=names.length>20?names.slice(0,19)+'\u2026':names;
+        out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
+          <div style="background:#FAECE7;border:1.5px solid #D85A30;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
+            <div style="font-size:11px;font-weight:700;color:#D85A30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&#x26A0; CONFLICT</div>
+            <div style="font-size:10px;color:#993C1D;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortNames}</div>
+            <div style="font-size:9px;color:#993C1D;margin-top:1px">${t} \u2013 ${conflictingBlocks[0].to}</div>
+          </div>
+        </td>`;
+        return;
+      }
+
+      // Single block — normal teal rowspan
+      const blk=blocks[0];
+      if(blk.from===t){
+        // Start of block
+        const blockSlots=slotsInBlock(blk.from,blk.to);
+        const rowspan=blockSlots.length;
+        blockSlots.slice(1).forEach(sl=>consumed[d].add(sl));
+        const blockH=rowspan*SLOT_H;
+        const shortName=blk.clientName.length>14?blk.clientName.slice(0,13)+'\u2026':blk.clientName;
+        out+=`<td rowspan="${rowspan}" style="vertical-align:top;padding:2px;border:0.5px solid rgba(0,0,0,.06)">
+          <div style="background:#9FE1CB;border:1px solid #1D9E75;border-radius:5px;height:${blockH-6}px;padding:4px 6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start">
+            <div style="font-size:11px;font-weight:600;color:#04342C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shortName}</div>
+            <div style="font-size:10px;color:#0F6E56;margin-top:2px">${blk.from} \u2013 ${blk.to}</div>
+          </div>
+        </td>`;
+      } else {
+        // Mid-block cell not yet consumed (edge case) — show as plain teal
+        out+=`<td style="background:#9FE1CB;border:0.5px solid #1D9E75;height:${SLOT_H}px"></td>`;
+      }
+    });
+    out+=`</tr>`;
+  });
+
+  out+=`</tbody></table></div>`;
   return out;
 }
 
