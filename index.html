@@ -381,7 +381,7 @@ const DD={
 function slotsInBlock(from,to){const lo=t2m(from),hi=t2m(to);if(lo===hi)return TIMES.filter(t=>t2m(t)===lo);return TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<hi);}
 function initSDS(st){const sd={};st.forEach(s=>{sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));});return sd;}
 
-let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
+let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},clientOverrideCounts:{},calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
 S.selDaysS=initSDS(S.staff);
 
 // clientOverrides: {cid: [{blockIdx, day, from, to}]} — today-only per-block time overrides
@@ -390,11 +390,15 @@ function getEffectiveBlocks(cid, day){
   const blocks=c.schedule[day]||[];
   const rawOvList=S.clientOverrides[cid];
   const ovList=Array.isArray(rawOvList)?rawOvList:[];
-  return blocks.map((blk,idx)=>{
+  // How many blocks to use today
+  const todayCount=(S.clientOverrideCounts?.[cid])||blocks.length;
+  const count=Math.max(blocks.length,ovList.filter(o=>o.day===day).length>0?todayCount:blocks.length);
+  return Array.from({length:count},(_,idx)=>{
+    const blk=blocks[idx]||{from:'',to:'',staffId:null,splits:null};
     const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
     if(ov) return {...blk,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
     return blk;
-  });
+  }).filter(blk=>blk.from&&blk.to); // only include blocks that have times set
 }
 function setClientOverride(cid,day,blockIdx,from,to){
   if(!S.clientOverrides[cid]) S.clientOverrides[cid]=[];
@@ -809,7 +813,7 @@ function applyState(p){
       migratedOv[cid] = [{ blockIdx: 0, day: val.day, from: val.from, to: val.to }];
     }
   });
-  S.clientOverrides = migratedOv;
+  S.clientOverrideCounts=p.clientOverrideCounts||{};
   S.selClient=S.clients[0]?.id||null;
   S.selStaff=S.staff[0]?.id||null;
   S.lastSaved=p.savedAt||null;
@@ -849,7 +853,7 @@ async function tryLoad(){
 
 async function doSave(silent){
   try{
-    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,savedAt:new Date().toISOString()};
+    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,clientOverrideCounts:S.clientOverrideCounts||{},savedAt:new Date().toISOString()};
     // Save to localStorage immediately as fast cache
     try{localStorage.setItem(SK,JSON.stringify(d));}catch(e){}
     // Save to Supabase
@@ -1136,13 +1140,30 @@ function renderTodayOverrideBlocks(){
   if(!el)return;
   if(!cid){el.innerHTML='<span style="color:#888;font-size:11px;">Select a client to see their blocks.</span>';return;}
   const c=gcN(cid); const day=todayDay();
-  const blocks=c?.schedule[day]||[];
-  if(!blocks.length){el.innerHTML='<span style="color:#888;font-size:11px;">No blocks scheduled for today.</span>';return;}
-  const ovList=S.clientOverrides[cid]||[];
-  el.innerHTML=blocks.map((blk,idx)=>{
+  const permBlocks=c?.schedule[day]||[];
+  const rawOvList=S.clientOverrides[cid];
+  const ovList=Array.isArray(rawOvList)?rawOvList:[];
+
+  // How many blocks to show today — default to permanent schedule count, or stored count
+  const storedCount=S.clientOverrideCounts?.[cid]||permBlocks.length||1;
+  const blockCount=parseInt(document.getElementById('tod-block-count')?.value||storedCount);
+
+  // Block count selector
+  const countSel=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+    <span style="font-size:11px;color:#666;font-weight:600;">How many blocks today?</span>
+    <select id="tod-block-count" style="font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid #ccc;" onchange="saveTodayBlockCount('${cid}');renderTodayOverrideBlocks();">
+      ${[1,2,3,4,5].map(n=>`<option value="${n}"${n===blockCount?'selected':''}>${n} block${n>1?'s':''}</option>`).join('')}
+    </select>
+    <span style="font-size:10px;color:#888;">(permanent: ${permBlocks.length})</span>
+  </div>`;
+
+  // Build rows for blockCount blocks
+  const rows=Array.from({length:blockCount},(_,idx)=>{
+    const permBlk=permBlocks[idx]; // may be undefined if adding extra blocks
     const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
+    const permLabel=permBlk?`${permBlk.from} – ${permBlk.to}`:'(no permanent block)';
     return`<div style="margin-bottom:10px;padding:8px;background:${ov?'#FFF8EC':'#f9f9f9'};border-radius:6px;border:1px solid ${ov?'#EF9F27':'#e0e0e0'};">
-      <div style="font-size:11px;font-weight:600;color:#444;margin-bottom:5px;">Block ${idx+1}: ${blk.from} – ${blk.to}${ov?` <span style="color:#b87a00;">→ ${ov.from} – ${ov.to} today</span>`:''}</div>
+      <div style="font-size:11px;font-weight:600;color:#444;margin-bottom:5px;">Block ${idx+1}${permBlk?`: ${permLabel}`:''}${ov?` <span style="color:#b87a00;">→ ${ov.from} – ${ov.to} today</span>`:''}</div>
       <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
         <select id="tod-from-${idx}" style="flex:1;min-width:70px;font-size:10px;padding:3px 4px;border-radius:4px;border:1px solid #ccc;">
           <option value="">From...</option>${TIMES.map(t=>`<option value="${t}"${ov&&ov.from===t?'selected':''}>${t}</option>`).join('')}
@@ -1156,6 +1177,17 @@ function renderTodayOverrideBlocks(){
       </div>
     </div>`;
   }).join('');
+
+  // Clear all button if any overrides exist
+  const clearAll=ovList.length?`<button style="font-size:10px;padding:3px 8px;border-radius:4px;background:#fff;color:#D85A30;border:1px solid #D85A30;cursor:pointer;margin-top:4px;" onclick="clearClientOverride('${cid}');renderTodayOverrideBlocks();">✕ Clear all overrides</button>`:'';
+
+  el.innerHTML=countSel+rows+clearAll;
+}
+
+function saveTodayBlockCount(cid){
+  const val=parseInt(document.getElementById('tod-block-count')?.value||1);
+  if(!S.clientOverrideCounts)S.clientOverrideCounts={};
+  S.clientOverrideCounts[cid]=val;
 }
 
 function applyBlockOverride(cid,blockIdx){
