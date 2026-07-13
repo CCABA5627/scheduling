@@ -384,24 +384,33 @@ function initSDS(st){const sd={};st.forEach(s=>{sd[s.id]=new Set(Object.keys(s.a
 let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
 S.selDaysS=initSDS(S.staff);
 
-// clientOverrides: {cid: {day, from, to}} — today-only time override
+// clientOverrides: {cid: [{blockIdx, day, from, to}]} — today-only per-block time overrides
 function getEffectiveBlocks(cid, day){
   const c=gcN(cid); if(!c) return [];
   const blocks=c.schedule[day]||[];
-  const ov=S.clientOverrides[cid];
-  if(ov&&ov.day===day){
-    // Replace all blocks for this day with the single override block, keeping staffId from first block
-    return [{from:ov.from,to:ov.to,staffId:blocks[0]?.staffId||null,splits:blocks[0]?.splits||null,_overridden:true}];
-  }
-  return blocks;
+  const ovList=S.clientOverrides[cid]||[];
+  return blocks.map((blk,idx)=>{
+    const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
+    if(ov) return {...blk,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
+    return blk;
+  });
 }
-function setClientOverride(cid,day,from,to){
-  S.clientOverrides[cid]={day,from,to};
+function setClientOverride(cid,day,blockIdx,from,to){
+  if(!S.clientOverrides[cid]) S.clientOverrides[cid]=[];
+  // Remove existing override for this block if any
+  S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx));
+  S.clientOverrides[cid].push({day,blockIdx,from,to});
   markDirty();render();
-  showToast(`${gcN(cid)?.name} adjusted to ${from} – ${to} for today only`,false);
+  showToast(`${gcN(cid)?.name} block adjusted to ${from} – ${to} for today only`,false);
 }
-function clearClientOverride(cid){
-  delete S.clientOverrides[cid];
+function clearClientOverride(cid,day,blockIdx){
+  if(!S.clientOverrides[cid])return;
+  if(day!==undefined&&blockIdx!==undefined){
+    S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx));
+    if(!S.clientOverrides[cid].length) delete S.clientOverrides[cid];
+  } else {
+    delete S.clientOverrides[cid];
+  }
   markDirty();render();
   showToast('Override cleared — back to regular schedule',false);
 }
@@ -943,7 +952,7 @@ function rToday(){
     else if(bl.splits&&bl.splits.length>1){
       chip=`<div style="display:flex;flex-wrap:wrap;gap:3px;">${bl.splits.map(sp=>`<span class="sc2" style="font-size:10px;">${gsN(sp.sid)?.name} ${sp.from}\u2013${sp.to}</span>`).join('')}</div>`;
     } else {chip=`<span class="sc2">${gsN(bl.staffId)?.name}</span>`;}
-    const overrideTag=bl.overridden?`<span style="font-size:10px;background:#FFF8EC;color:#b87a00;border:1px solid #EF9F27;border-radius:8px;padding:1px 7px;margin-top:2px;display:inline-block;">📅 Today only: ${bl.from} – ${bl.to}</span>`:'';
+    const overrideTag=bl.overridden?`<span style="font-size:10px;background:#FFF8EC;color:#b87a00;border:1px solid #EF9F27;border-radius:8px;padding:1px 7px;margin-top:2px;display:inline-block;">📅 Today only: ${bl.from} – ${bl.to} (was ${bl._origFrom} – ${bl._origTo})</span>`:'';
     const gapTag=gaps?`<div style="font-size:10px;color:#b87a00;font-weight:600;margin-top:3px;">⏱ ${gaps}</div>`:'';
     const tempTag=bl.isTemp?`<span class="tc">${bl.clientCancelled?'Replacement session':('Temp'+(bl.label?' \u2013 '+bl.label:''))}</span>`:'';
     const bkey=regBlock('t_'+bl.client.id+'_'+today+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:today,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
@@ -969,18 +978,10 @@ function rToday(){
       <select id="client-co-sel" style="margin-bottom:6px"><option value="">Select client...</option>${S.clients.map(c=>`<option value="${c.id}"${S.calledOutClients.includes(c.id)?' disabled':''}>${c.name}${S.calledOutClients.includes(c.id)?' (cancelled)':''}</option>`).join('')}</select>
       <button class="btn" style="width:100%;background:#534AB7;color:#fff;border-color:#534AB7;" onclick="mkClientCO()">Mark client cancelled</button>
     </div>
-    <div class="ss" style="border-bottom:2px solid #EF9F27;">
+    <div class="ss" style="border-left:3px solid #EF9F27;">
       <div class="sl" style="color:#b87a00;">📅 Today-only schedule adjust</div>
-      <select id="tod-client-sel" style="margin-bottom:6px;"><option value="">Select client...</option>${S.clients.map(c=>{const hasOv=!!S.clientOverrides[c.id];return`<option value="${c.id}">${c.name}${hasOv?' ✓ adjusted':''}</option>`;}).join('')}</select>
-      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">
-        <select id="tod-from" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">From...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
-        <span style="font-size:10px;color:#888;">–</span>
-        <select id="tod-to" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">To...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
-      </div>
-      <div style="display:flex;gap:4px;">
-        <button class="btn" style="flex:1;background:#EF9F27;color:#fff;border-color:#EF9F27;font-size:11px;" onclick="applyTodayOverride()">Set for today</button>
-        <button class="btn btn-sm" style="font-size:11px;" onclick="clearTodayOverride()">Clear</button>
-      </div>
+      <select id="tod-client-sel" style="margin-bottom:6px;" onchange="renderTodayOverrideBlocks()"><option value="">Select client...</option>${S.clients.map(c=>{const hasOv=(S.clientOverrides[c.id]||[]).length>0;return`<option value="${c.id}">${c.name}${hasOv?' ✓':''}</option>`;}).join('')}</select>
+      <div id="tod-block-list" style="font-size:11px;color:#888;">Select a client to see their blocks.</div>
     </div>
     <div class="ss"><div class="sl">${today===realToday?'Today':'Day'} \u2014 ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
@@ -1132,27 +1133,66 @@ function rmCO(sid){S.calledOut=S.calledOut.filter(co=>co.sid!==sid);render();}
 function mkClientCO(){const sel=document.getElementById('client-co-sel');if(!sel?.value)return;const cid=sel.value;if(!S.calledOutClients.includes(cid))S.calledOutClients.push(cid);markDirty();render();showToast(`Client cancelled — sessions removed`,false);}
 function mkClientCO2(cid){if(!S.calledOutClients.includes(cid))S.calledOutClients.push(cid);markDirty();render();showToast(`Client cancelled — sessions removed`,false);}
 function rmClientCO(cid){S.calledOutClients=S.calledOutClients.filter(c=>c!==cid);markDirty();render();showToast(`Client restored — sessions back on schedule`,false);}
-function applyTodayOverride(){
+function renderTodayOverrideBlocks(){
   const cid=document.getElementById('tod-client-sel')?.value;
-  const from=document.getElementById('tod-from')?.value;
-  const to=document.getElementById('tod-to')?.value;
-  if(!cid){showToast('Select a client first',true);return;}
+  const el=document.getElementById('tod-block-list');
+  if(!el)return;
+  if(!cid){el.innerHTML='<span style="color:#888;font-size:11px;">Select a client to see their blocks.</span>';return;}
+  const c=gcN(cid); const day=todayDay();
+  const blocks=c?.schedule[day]||[];
+  if(!blocks.length){el.innerHTML='<span style="color:#888;font-size:11px;">No blocks scheduled for today.</span>';return;}
+  const ovList=S.clientOverrides[cid]||[];
+  el.innerHTML=blocks.map((blk,idx)=>{
+    const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
+    return`<div style="margin-bottom:10px;padding:8px;background:${ov?'#FFF8EC':'#f9f9f9'};border-radius:6px;border:1px solid ${ov?'#EF9F27':'#e0e0e0'};">
+      <div style="font-size:11px;font-weight:600;color:#444;margin-bottom:5px;">Block ${idx+1}: ${blk.from} – ${blk.to}${ov?` <span style="color:#b87a00;">→ ${ov.from} – ${ov.to} today</span>`:''}</div>
+      <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
+        <select id="tod-from-${idx}" style="flex:1;min-width:70px;font-size:10px;padding:3px 4px;border-radius:4px;border:1px solid #ccc;">
+          <option value="">From...</option>${TIMES.map(t=>`<option value="${t}"${ov&&ov.from===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <span style="font-size:10px;color:#888;">–</span>
+        <select id="tod-to-${idx}" style="flex:1;min-width:70px;font-size:10px;padding:3px 4px;border-radius:4px;border:1px solid #ccc;">
+          <option value="">To...</option>${TIMES.map(t=>`<option value="${t}"${ov&&ov.to===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <button style="font-size:10px;padding:3px 7px;border-radius:4px;background:#EF9F27;color:#fff;border:none;cursor:pointer;" onclick="applyBlockOverride('${cid}',${idx})">Set</button>
+        ${ov?`<button style="font-size:10px;padding:3px 7px;border-radius:4px;background:#fff;color:#888;border:1px solid #ccc;cursor:pointer;" onclick="clearBlockOverride('${cid}',${idx})">Clear</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function applyBlockOverride(cid,blockIdx){
+  const day=todayDay();
+  const from=document.getElementById(`tod-from-${blockIdx}`)?.value;
+  const to=document.getElementById(`tod-to-${blockIdx}`)?.value;
   if(!from||!to){showToast('Select both a from and to time',true);return;}
   if(t2m(to)<=t2m(from)){showToast('To time must be after from time',true);return;}
-  setClientOverride(cid,todayDay(),from,to);
+  setClientOverride(cid,day,blockIdx,from,to);
+  setTimeout(renderTodayOverrideBlocks,100);
+}
+
+function clearBlockOverride(cid,blockIdx){
+  clearClientOverride(cid,todayDay(),blockIdx);
+  setTimeout(renderTodayOverrideBlocks,100);
+}
+
+function applyTodayOverride(){
+  showToast('Use the block controls above to set overrides',false);
 }
 function clearTodayOverride(){
   const cid=document.getElementById('tod-client-sel')?.value;
   if(!cid){showToast('Select a client first',true);return;}
   clearClientOverride(cid);
+  setTimeout(renderTodayOverrideBlocks,100);
 }
 function applyOverride(cid){
   const day=document.getElementById('ov-day')?.value;
+  const blockIdx=parseInt(document.getElementById('ov-block-idx')?.value||'0');
   const from=document.getElementById('ov-from')?.value;
   const to=document.getElementById('ov-to')?.value;
   if(!from||!to){showToast('Please select both a from and to time',true);return;}
   if(t2m(to)<=t2m(from)){showToast('To time must be after from time',true);return;}
-  setClientOverride(cid,day,from,to);
+  setClientOverride(cid,day,blockIdx,from,to);
 }
 function addC(){const name=prompt('New client name:');if(!name?.trim())return;const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});S.pods[id]=[];S.selClient=id;markDirty();render();}
 function addCED(){const name=prompt('New client name:');if(!name?.trim())return;const id='c'+Date.now();S.clients.push({id,name:name.trim(),schedule:{}});S.pods[id]=[];S.edSelClient=id;markDirty();render();}
