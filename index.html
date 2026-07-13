@@ -755,14 +755,80 @@ function updateBlockTo(cid,day,idx,val){const blk=(gcN(cid)?.schedule[day]||[])[
 function updateBlockStaff(cid,day,idx,sid){const blk=(gcN(cid)?.schedule[day]||[])[idx];if(!blk)return;blk.staffId=sid||null;markDirty();render();}
 function toggleDay(cid,day){const c=gcN(cid);if(!c)return;if(c.schedule[day]){delete c.schedule[day];}else{c.schedule[day]=[];addBlock(cid,day);return;}markDirty();render();}
 
-function tryLoad(){try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);S.clients=p.clients||S.clients;S.staff=p.staff||S.staff;S.pods=p.pods||S.pods;S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.lastSaved=p.savedAt||null;S.dirty=false;S.selDaysS=initSDS(S.staff);updSI();return true;}}catch(e){}return false;}
-function doSave(silent){try{const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();if(!silent)showToast('Saved',false);}catch(e){showToast('Save failed',true);}}
-function markDirty(){S.dirty=true;updSI();if(window._autoSaveTimer)clearTimeout(window._autoSaveTimer);window._autoSaveTimer=setTimeout(()=>{if(S.dirty){doSave(true);}},2000);}
-function updSI(){const el=document.getElementById('si');if(!el)return;if(S.dirty){el.className='si unsaved';el.textContent='Saving...';}else if(S.lastSaved){el.className='si saved';el.textContent='Autosaved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved yet';}}
+const SB_STATE_URL=`${SUPABASE_URL}/rest/v1/schedule_state`;
+const SB_HDR={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};
+
+function applyState(p){
+  S.clients=p.clients||S.clients;
+  S.staff=p.staff||S.staff;
+  S.pods=p.pods||S.pods;
+  S.tempBlocks=p.tempBlocks||[];
+  S.calledOut=p.calledOut||[];
+  S.calledOutClients=p.calledOutClients||[];
+  S.selClient=S.clients[0]?.id||null;
+  S.selStaff=S.staff[0]?.id||null;
+  S.lastSaved=p.savedAt||null;
+  S.dirty=false;
+  S.selDaysS=initSDS(S.staff);
+  updSI();
+}
+
+async function tryLoad(){
+  // First apply from localStorage instantly so UI isn't blank
+  try{
+    const r=localStorage.getItem(SK);
+    if(r){applyState(JSON.parse(r));}
+  }catch(e){}
+  // Then fetch from Supabase and overwrite if newer
+  try{
+    updSI('loading');
+    const res=await fetch(`${SB_STATE_URL}?id=eq.main`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length&&rows[0].data){
+      const p=rows[0].data;
+      const cloudTime=new Date(p.savedAt||0).getTime();
+      const localTime=new Date(S.lastSaved||0).getTime();
+      if(cloudTime>=localTime){
+        applyState(p);
+        // Update local cache
+        try{localStorage.setItem(SK,JSON.stringify(p));}catch(e){}
+        showToast('Schedule loaded from cloud',false);
+      }
+    }
+  }catch(e){
+    console.warn('Could not load from cloud, using local data',e);
+  }
+  render();
+  return true;
+}
+
+async function doSave(silent){
+  try{
+    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,savedAt:new Date().toISOString()};
+    // Save to localStorage immediately as fast cache
+    try{localStorage.setItem(SK,JSON.stringify(d));}catch(e){}
+    // Save to Supabase
+    updSI('saving');
+    await fetch(SB_STATE_URL,{method:'POST',headers:SB_HDR,body:JSON.stringify({id:'main',data:d,updated_at:new Date().toISOString()})});
+    S.dirty=false;S.lastSaved=d.savedAt;updSI();
+    if(!silent)showToast('Saved ✓',false);
+  }catch(e){
+    // Fall back to just localStorage
+    try{const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,savedAt:new Date().toISOString()};localStorage.setItem(SK,JSON.stringify(d));S.dirty=false;S.lastSaved=d.savedAt;updSI();}catch(e2){}
+    if(!silent)showToast('Saved locally (cloud unavailable)',false);
+  }
+}
+
+function markDirty(){
+  S.dirty=true;updSI();
+  if(window._autoSaveTimer)clearTimeout(window._autoSaveTimer);
+  window._autoSaveTimer=setTimeout(()=>{if(S.dirty){doSave(true);}},2000);
+}
+function updSI(status){const el=document.getElementById('si');if(!el)return;if(status==='saving'){el.className='si unsaved';el.textContent='☁ Saving...';}else if(status==='loading'){el.className='si';el.textContent='☁ Loading...';}else if(S.dirty){el.className='si unsaved';el.textContent='Unsaved changes';}else if(S.lastSaved){el.className='si saved';el.textContent='☁ Saved '+new Date(S.lastSaved).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}else{el.className='si';el.textContent='Not saved yet';}}
 function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
 function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,exportedAt:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='ccaba-scheduling-backup.json';a.click();URL.revokeObjectURL(u);showToast('Backup downloaded',false);}
-function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
-function resetData(){if(!confirm('Reset to sample data?'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.tempBlocks=[];S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}render();showToast('Reset',false);}
+function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported — saving to cloud…',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
+function resetData(){if(!confirm('Reset ALL data to sample defaults? This will clear the cloud too.'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.tempBlocks=[];S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}doSave(true);render();showToast('Reset to defaults',false);}
 
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function gcN(id){return S.clients.find(c=>c.id===id);}
@@ -1013,7 +1079,7 @@ function addCED(){const name=prompt('New client name:');if(!name?.trim())return;
 function addS(){const name=prompt('New staff name:');if(!name?.trim())return;const id='s'+Date.now();S.staff.push({id,name:name.trim(),availability:{}});S.selDaysS[id]=new Set();S.selStaff=id;markDirty();render();}
 function rmC(id){if(!confirm('Remove this client?'))return;S.clients=S.clients.filter(c=>c.id!==id);delete S.pods[id];S.tempBlocks=S.tempBlocks.filter(t=>t.cid!==id);S.selClient=S.clients[0]?.id||null;markDirty();render();}
 function rmS(id){if(!confirm('Remove this staff member?'))return;S.staff=S.staff.filter(s=>s.id!==id);Object.keys(S.pods).forEach(cid=>{S.pods[cid]=S.pods[cid].filter(s=>s!==id);});S.clients.forEach(c=>{DAYS.forEach(d=>{(c.schedule[d]||[]).forEach(blk=>{if(blk.staffId===id)blk.staffId=null;});});});S.calledOut=S.calledOut.filter(s=>s!==id);S.tempBlocks.forEach(tb=>{if(tb.staffId===id)tb.staffId=null;});delete S.selDaysS[id];S.selStaff=S.staff[0]?.id||null;markDirty();render();}
-function ldSt(){const ok=tryLoad();if(ok){render();showToast('Loaded',false);}else showToast('No saved data',true);}
+function ldSt(){tryLoad().then(()=>showToast('Reloaded from cloud',false));}
 
 const AI_SK='podscheduler_ai_key';
 function loadAIKey(){try{const k=localStorage.getItem(AI_SK);if(k)S.aiKey=k;}catch(e){}}
@@ -1025,7 +1091,7 @@ function rAI(){loadAIKey();const keySet=!!S.aiKey;const suggestions=['Who is ove
 
 function render(){const mc=document.getElementById('mc');if(!mc)return;const block=['pods','data','save','ai'];mc.style.display=block.includes(S.tab)?'block':'flex';window._BM={};if(S.tab==='today')mc.innerHTML=rToday();else if(S.tab==='week')mc.innerHTML=rWeek();else if(S.tab==='clients')mc.innerHTML=rClients();else if(S.tab==='staff')mc.innerHTML=rStaff();else if(S.tab==='pods')mc.innerHTML=rPods();else if(S.tab==='callout')mc.innerHTML=rCallout();else if(S.tab==='data')mc.innerHTML=rData();else if(S.tab==='save')mc.innerHTML=rSave();else if(S.tab==='ai')mc.innerHTML=rAI();updSI();}
 
-tryLoad();render();
+tryLoad(); // async — loads from localStorage instantly, then syncs from cloud
 </script>
 </body>
 </html>
