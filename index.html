@@ -946,6 +946,7 @@ function rToday(){
     const overrideTag=bl.overridden?`<span style="font-size:10px;background:#FFF8EC;color:#b87a00;border:1px solid #EF9F27;border-radius:8px;padding:1px 7px;margin-top:2px;display:inline-block;">📅 Today only: ${bl.from} – ${bl.to}</span>`:'';
     const gapTag=gaps?`<div style="font-size:10px;color:#b87a00;font-weight:600;margin-top:3px;">⏱ ${gaps}</div>`:'';
     const tempTag=bl.isTemp?`<span class="tc">${bl.clientCancelled?'Replacement session':('Temp'+(bl.label?' \u2013 '+bl.label:''))}</span>`:'';
+    const bkey=regBlock('t_'+bl.client.id+'_'+today+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:today,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
     return`<div class="ts${bl.isTemp?' tmp':''}" style="${bdr}" onclick="openBlock('${bkey}')">
       <div style="font-size:11px;color:#666;min-width:120px">${fmtBlock(bl)}</div>
       <div class="av av-c">${ini(bl.client.name)}</div>
