@@ -388,7 +388,8 @@ S.selDaysS=initSDS(S.staff);
 function getEffectiveBlocks(cid, day){
   const c=gcN(cid); if(!c) return [];
   const blocks=c.schedule[day]||[];
-  const ovList=S.clientOverrides[cid]||[];
+  const rawOvList=S.clientOverrides[cid];
+  const ovList=Array.isArray(rawOvList)?rawOvList:[];
   return blocks.map((blk,idx)=>{
     const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
     if(ov) return {...blk,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
@@ -797,7 +798,18 @@ function applyState(p){
   S.tempBlocks=p.tempBlocks||[];
   S.calledOut=p.calledOut||[];
   S.calledOutClients=p.calledOutClients||[];
-  S.clientOverrides=p.clientOverrides||{};
+  // Migrate clientOverrides from old {cid:{day,from,to}} to new {cid:[{blockIdx,day,from,to}]}
+  const rawOv = p.clientOverrides || {};
+  const migratedOv = {};
+  Object.entries(rawOv).forEach(([cid, val]) => {
+    if (Array.isArray(val)) {
+      migratedOv[cid] = val; // already new format
+    } else if (val && typeof val === 'object' && val.from) {
+      // old single-object format — convert to array with blockIdx 0
+      migratedOv[cid] = [{ blockIdx: 0, day: val.day, from: val.from, to: val.to }];
+    }
+  });
+  S.clientOverrides = migratedOv;
   S.selClient=S.clients[0]?.id||null;
   S.selStaff=S.staff[0]?.id||null;
   S.lastSaved=p.savedAt||null;
