@@ -444,7 +444,7 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     const conflicts=[];const ns=new Set(newSlots);
     S.clients.forEach(cl=>{
       if(S.calledOutClients.includes(cl.id))return;
-      (cl.schedule[day]||[]).forEach((blk,idx)=>{
+      getEffectiveBlocks(cl.id,day).forEach((blk,idx)=>{
         if(blk.staffId!==sid)return;
         if(cl.id===excCid&&idx===excBlockIdx)return;
         const ov=slotsInBlock(blk.from,blk.to).filter(s=>ns.has(s));
