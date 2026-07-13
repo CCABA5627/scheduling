@@ -969,6 +969,19 @@ function rToday(){
       <select id="client-co-sel" style="margin-bottom:6px"><option value="">Select client...</option>${S.clients.map(c=>`<option value="${c.id}"${S.calledOutClients.includes(c.id)?' disabled':''}>${c.name}${S.calledOutClients.includes(c.id)?' (cancelled)':''}</option>`).join('')}</select>
       <button class="btn" style="width:100%;background:#534AB7;color:#fff;border-color:#534AB7;" onclick="mkClientCO()">Mark client cancelled</button>
     </div>
+    <div class="ss" style="border-bottom:2px solid #EF9F27;">
+      <div class="sl" style="color:#b87a00;">📅 Today-only schedule adjust</div>
+      <select id="tod-client-sel" style="margin-bottom:6px;"><option value="">Select client...</option>${S.clients.map(c=>{const hasOv=!!S.clientOverrides[c.id];return`<option value="${c.id}">${c.name}${hasOv?' ✓ adjusted':''}</option>`;}).join('')}</select>
+      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">
+        <select id="tod-from" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">From...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+        <span style="font-size:10px;color:#888;">–</span>
+        <select id="tod-to" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">To...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn" style="flex:1;background:#EF9F27;color:#fff;border-color:#EF9F27;font-size:11px;" onclick="applyTodayOverride()">Set for today</button>
+        <button class="btn btn-sm" style="font-size:11px;" onclick="clearTodayOverride()">Clear</button>
+      </div>
+    </div>
     <div class="ss"><div class="sl">${today===realToday?'Today':'Day'} \u2014 ${today}</div>
       <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
       <div style="background:#FAECE7;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div>
@@ -1119,6 +1132,20 @@ function rmCO(sid){S.calledOut=S.calledOut.filter(co=>co.sid!==sid);render();}
 function mkClientCO(){const sel=document.getElementById('client-co-sel');if(!sel?.value)return;const cid=sel.value;if(!S.calledOutClients.includes(cid))S.calledOutClients.push(cid);markDirty();render();showToast(`Client cancelled — sessions removed`,false);}
 function mkClientCO2(cid){if(!S.calledOutClients.includes(cid))S.calledOutClients.push(cid);markDirty();render();showToast(`Client cancelled — sessions removed`,false);}
 function rmClientCO(cid){S.calledOutClients=S.calledOutClients.filter(c=>c!==cid);markDirty();render();showToast(`Client restored — sessions back on schedule`,false);}
+function applyTodayOverride(){
+  const cid=document.getElementById('tod-client-sel')?.value;
+  const from=document.getElementById('tod-from')?.value;
+  const to=document.getElementById('tod-to')?.value;
+  if(!cid){showToast('Select a client first',true);return;}
+  if(!from||!to){showToast('Select both a from and to time',true);return;}
+  if(t2m(to)<=t2m(from)){showToast('To time must be after from time',true);return;}
+  setClientOverride(cid,todayDay(),from,to);
+}
+function clearTodayOverride(){
+  const cid=document.getElementById('tod-client-sel')?.value;
+  if(!cid){showToast('Select a client first',true);return;}
+  clearClientOverride(cid);
+}
 function applyOverride(cid){
   const day=document.getElementById('ov-day')?.value;
   const from=document.getElementById('ov-from')?.value;
