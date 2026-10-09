@@ -904,27 +904,35 @@ function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClie
 out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,splits:tb.splits||null,isTemp:true,tempId:tb.id,label:tb.label,slots:tb.slots,clientCancelled:S.calledOutClients.includes(tb.cid)});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
 
 function getPartialGaps(bl,day){
+  // No staff at all \u2014 not a partial gap, it's fully uncovered (handled separately)
   if(!bl.staffId&&(!bl.splits||!bl.splits.length))return null;
   const blockFrom=bl.from, blockTo=bl.to;
   const allSlots=bl.isTemp?bl.slots:slotsInBlock(blockFrom,blockTo);
   if(!allSlots.length)return null;
+  const allSlotsSet=new Set(allSlots);
 
   const coveredSlots=new Set();
   if(bl.splits&&bl.splits.length){
+    // Split block \u2014 check each split staff member individually
     bl.splits.forEach(sp=>{
+      if(isStaffOut(sp.sid))return; // all-day callout \u2014 covers nothing
       const spCOs=getStaffCallout(sp.sid);
       const calledOutM=new Set();
       spCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
-      slotsInBlock(sp.from,sp.to).forEach(sl=>{if(allSlots.includes(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);});
+      slotsInBlock(sp.from,sp.to).forEach(sl=>{
+        if(allSlotsSet.has(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);
+      });
     });
   } else if(bl.staffId){
+    // Single staff \u2014 if all-day callout, nothing is covered
+    if(isStaffOut(bl.staffId))return null; // show as "called out" not partial gap
     const staffCOs=getStaffCallout(bl.staffId);
-    if(!staffCOs.some(co=>co.fromM===undefined)){
-      const calledOutM=new Set();
-      staffCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
-      const av=new Set(gsN(bl.staffId)?.availability[day]||[]);
-      allSlots.forEach(sl=>{if(av.has(sl)&&!calledOutM.has(t2m(sl)))coveredSlots.add(sl);});
-    }
+    const calledOutM=new Set();
+    staffCOs.forEach(co=>{if(co.fromM!==undefined)for(let m=co.fromM;m<co.toM;m+=15)calledOutM.add(m);});
+    // All slots in the block are covered unless staff is partially called out during them
+    allSlots.forEach(sl=>{
+      if(!calledOutM.has(t2m(sl)))coveredSlots.add(sl);
+    });
   }
 
   const uncovered=allSlots.filter(sl=>!coveredSlots.has(sl));
@@ -948,68 +956,139 @@ function getPartialGaps(bl,day){
 
 function rToday(){
   if(!S.selectedDay)S.selectedDay=todayDay();
-  const today=S.selectedDay;const realToday=todayDay();
+  const today=S.selectedDay; const realToday=todayDay();
   const blocks=getDayBlocks(today);
-  const staffBanner=S.calledOut.length>0?`<div class="cob"><div class="cot">⚠ Staff called out / partial out</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOut.map(co=>{const s=gsN(co.sid);const lbl=coLabel(co);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:2px 8px;border-radius:12px;font-size:11px">${s?s.name:'?'} <span style="opacity:0.7">(${lbl})</span> <span onclick="rmCO('${co.sid}')" style="cursor:pointer;font-weight:700">×</span></span>`;}).join('')}</div></div>`:'';
-  const clientBanner=S.calledOutClients.length>0?`<div class="cob" style="background:#F0F0FE;border-color:#AFA9EC;"><div class="cot" style="color:#3C3489;">📵 Clients cancelled — sessions removed</div><div style="display:flex;gap:5px;flex-wrap:wrap">${S.calledOutClients.map(cid=>{const c=gcN(cid);return`<span style="background:#EEEDFE;color:#3C3489;padding:2px 8px;border-radius:12px;font-size:11px">${c?c.name:'?'} <span onclick="rmClientCO('${cid}')" style="cursor:pointer;font-weight:700">×</span></span>`;}).join('')}</div></div>`:'';
-  const cov=blocks.filter(b=>b.staffId&&!isStaffOut(b.staffId)).length;
-  const unc=blocks.filter(b=>!b.staffId||isStaffOut(b.staffId)).length;
-  const sh=blocks.length===0?`<div class="es">No sessions for ${today}${S.calledOutClients.length>0?' (some clients cancelled)':''}</div>`:blocks.map(bl=>{
-    const co=bl.staffId&&S.calledOut.some(c=>c.sid===bl.staffId&&(c.fromM===undefined||(t2m(bl.from)>=c.fromM&&t2m(bl.from)<c.toM)));
-    const todayConflicts=getConflictingStaffOnDay(today);
-    const blConflict=bl.staffId&&todayConflicts.has(bl.staffId)&&!co;
+  const todayConflicts=getConflictingStaffOnDay(today);
+
+  // Categorize blocks
+  const needsCoverage=[],partialBlocks=[],coveredBlocks=[],tempBlocks=[];
+  blocks.forEach(bl=>{
+    const staffOut=bl.staffId&&isStaffOut(bl.staffId);
     const gaps=getPartialGaps(bl,today);
-    const bdr=co?'border-color:#F0997B;background:#FAECE7':blConflict?'border-color:#D85A30;background:#FAECE7':gaps?'border-color:#EF9F27;background:#FFF8EC':bl.isTemp?'border-color:#85B7EB;background:#E6F1FB':'';
-    // Build staff chip — handle splits
-    let chip;
-    if(!bl.staffId){chip=`<span class="uc">Needs coverage</span>`;}
-    else if(co){chip=`<span class="cc">&#9888; ${gsN(bl.staffId)?.name} (out)</span>`;}
-    else if(blConflict){chip=`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#FAECE7;color:#D85A30;font-weight:500">⚠ ${gsN(bl.staffId)?.name} (conflict)</span>`;}
-    else if(bl.splits&&bl.splits.length>1){
-      chip=`<div style="display:flex;flex-wrap:wrap;gap:3px;">${bl.splits.map(sp=>`<span class="sc2" style="font-size:10px;">${gsN(sp.sid)?.name} ${sp.from}\u2013${sp.to}</span>`).join('')}</div>`;
-    } else {chip=`<span class="sc2">${gsN(bl.staffId)?.name}</span>`;}
-    const overrideTag=bl.overridden?`<span style="font-size:10px;background:#FFF8EC;color:#b87a00;border:1px solid #EF9F27;border-radius:8px;padding:1px 7px;margin-top:2px;display:inline-block;">📅 Today only: ${bl.from} – ${bl.to} (was ${bl._origFrom} – ${bl._origTo})</span>`:'';
-    const gapTag=gaps?`<div style="font-size:10px;color:#b87a00;font-weight:600;margin-top:3px;">⏱ ${gaps}</div>`:'';
-    const tempTag=bl.isTemp?`<span class="tc">${bl.clientCancelled?'Replacement session':('Temp'+(bl.label?' \u2013 '+bl.label:''))}</span>`:'';
+    const conflict=bl.staffId&&todayConflicts.has(bl.staffId)&&!staffOut;
+    if(bl.isTemp){tempBlocks.push({bl,gaps,conflict});}
+    else if(!bl.staffId||staffOut){needsCoverage.push({bl,gaps,conflict});}
+    else if(gaps||conflict){partialBlocks.push({bl,gaps,conflict});}
+    else{coveredBlocks.push({bl,gaps,conflict});}
+  });
+
+  function blockCard(bl,gaps,conflict){
+    const staffOut=bl.staffId&&isStaffOut(bl.staffId);
     const bkey=regBlock('t_'+bl.client.id+'_'+today+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:today,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});
-    return`<div class="ts${bl.isTemp?' tmp':''}" style="${bdr}" onclick="openBlock('${bkey}')">
-      <div style="font-size:11px;color:#666;min-width:120px">${fmtBlock(bl)}</div>
-      <div class="av av-c">${ini(bl.client.name)}</div>
-      <div style="flex:1"><div style="font-size:12px;font-weight:500">${bl.client.name}</div>${tempTag?`<div style="margin-top:2px">${tempTag}</div>`:''}${overrideTag?`<div>${overrideTag}</div>`:''}${gapTag}</div>
-      ${chip}<div style="font-size:10px;color:#bbb;margin-left:4px">tap</div>
-    </div>`;
-  }).join('');
-  return`<div style="width:100%"><div class="sidebar">
-    <div class="ss"><div class="sl">Staff callout</div>
-      <select id="co-sel" style="margin-bottom:6px"><option value="">Select staff...</option>${S.staff.map(s=>{const cos=getStaffCallout(s.id);const lbl=cos.length?cos.map(co=>' ('+coLabel(co)+')').join(''):'';return`<option value="${s.id}">${s.name}${lbl}</option>`;}).join('')}</select>
-      <div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:600;">TIME OUT (blank = all day)</div>
-      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">
-        <select id="co-from" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">From...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
-        <span style="font-size:10px;color:#888;">–</span>
-        <select id="co-to" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">To...</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+    let staffLine;
+    if(!bl.staffId){staffLine=`<div style="color:#993C1D;font-weight:600;font-size:12px;margin-top:3px;">⚠ Unassigned — needs coverage</div>`;}
+    else if(staffOut){staffLine=`<div style="color:#993C1D;font-weight:600;font-size:12px;margin-top:3px;">⚠ ${gsN(bl.staffId)?.name} called out</div>`;}
+    else if(conflict){staffLine=`<div style="color:#D85A30;font-weight:600;font-size:12px;margin-top:3px;">⚠ ${gsN(bl.staffId)?.name} — double booked</div>`;}
+    else if(bl.splits&&bl.splits.length>1){staffLine=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${bl.splits.map(sp=>{const spOut=isStaffOut(sp.sid);return`<span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${spOut?'#F5C4B3':'#E1F5EE'};color:${spOut?'#4A1B0C':'#085041'};font-weight:500;">${gsN(sp.sid)?.name||'?'} <span style="opacity:.7;font-size:10px;">${sp.from}–${sp.to}</span></span>`;}).join('')}</div>`;}
+    else{staffLine=`<div style="font-size:13px;font-weight:600;color:#111;margin-top:3px;">${gsN(bl.staffId)?.name||'?'}</div>`;}
+    const overrideTag=bl.overridden?`<div style="margin-top:4px;"><span style="font-size:10px;background:#FFF8EC;color:#b87a00;border:1px solid #EF9F27;border-radius:6px;padding:2px 7px;">📅 Today only: ${bl.from}–${bl.to}</span></div>`:'';
+    const gapTag=gaps?`<div style="font-size:11px;color:#b87a00;font-weight:600;margin-top:4px;">⏱ Gap: ${gaps}</div>`:'';
+    const tempTag=bl.isTemp?`<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 7px;border-radius:6px;">${bl.clientCancelled?'Replacement':'Temp'}${bl.label?' – '+bl.label:''}</span>`:'';
+    const leftBorder=conflict?'4px solid #D85A30':(!bl.staffId||staffOut)?'4px solid #E24B4A':gaps?'4px solid #EF9F27':bl.isTemp?'4px solid #85B7EB':'4px solid #1D9E75';
+    const bg=conflict?'#FFF5F2':(!bl.staffId||staffOut)?'#fff9f9':gaps?'#FFFDF5':bl.isTemp?'#F4F9FF':'#fff';
+    return`<div onclick="openBlock('${bkey}')" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.08);margin-bottom:8px;cursor:pointer;border-left:${leftBorder};background:${bg};" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      <div style="min-width:90px;flex-shrink:0;padding-top:2px;">
+        <div style="font-size:11px;color:#555;font-weight:600;">${fmtBlock(bl)}</div>
+        ${tempTag?`<div style="margin-top:4px;">${tempTag}</div>`:''}
       </div>
-      <button class="btn btn-d" style="width:100%" onclick="mkCO()">Mark called out</button>
+      <div class="av av-c" style="width:36px;height:36px;font-size:11px;flex-shrink:0;">${ini(bl.client.name)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;color:#111;">${bl.client.name}</div>
+        ${staffLine}${overrideTag}${gapTag}
+      </div>
+      <div style="font-size:10px;color:#ccc;align-self:center;flex-shrink:0;">tap</div>
+    </div>`;
+  }
+
+  function section(title,color,dot,items){
+    if(!items.length)return'';
+    return`<div style="margin-bottom:1.5rem;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${color};margin-bottom:10px;display:flex;align-items:center;gap:7px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dot};flex-shrink:0;display:inline-block;"></span>${title}<span style="font-size:10px;background:${dot}22;color:${color};padding:1px 7px;border-radius:10px;margin-left:2px;">${items.length}</span>
+      </div>
+      ${items.map(({bl,gaps,conflict})=>blockCard(bl,gaps,conflict)).join('')}
+    </div>`;
+  }
+
+  const dayPicker=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.25rem;">${DAYS.map(d=>`<button onclick="S.selectedDay='${d}';render()" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:${d===today?'700':'400'};border:1px solid ${d===today?'#534AB7':'#ddd'};background:${d===today?'#534AB7':d===realToday?'#EEEDFE':'#fafafa'};color:${d===today?'#fff':d===realToday?'#534AB7':'#555'};cursor:pointer;">${d}${d===realToday&&d!==today?' ·':''}</button>`).join('')}</div>`;
+
+  const summaryBar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:#E1F5EE;flex:1;min-width:90px;">
+      <span style="font-size:24px;font-weight:800;color:#085041;line-height:1;">${coveredBlocks.length+tempBlocks.length}</span>
+      <span style="font-size:11px;color:#085041;font-weight:600;line-height:1.3;">Sessions<br>Covered</span>
     </div>
-    <div class="ss"><div class="sl">Client cancellation</div>
-      <select id="client-co-sel" style="margin-bottom:6px"><option value="">Select client...</option>${S.clients.map(c=>`<option value="${c.id}"${S.calledOutClients.includes(c.id)?' disabled':''}>${c.name}${S.calledOutClients.includes(c.id)?' (cancelled)':''}</option>`).join('')}</select>
-      <button class="btn" style="width:100%;background:#534AB7;color:#fff;border-color:#534AB7;" onclick="mkClientCO()">Mark client cancelled</button>
+    ${needsCoverage.length?`<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:#FAECE7;flex:1;min-width:90px;">
+      <span style="font-size:24px;font-weight:800;color:#993C1D;line-height:1;">${needsCoverage.length}</span>
+      <span style="font-size:11px;color:#993C1D;font-weight:600;line-height:1.3;">Need<br>Coverage</span>
+    </div>`:''}
+    ${partialBlocks.length?`<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:#FFF8EC;flex:1;min-width:90px;">
+      <span style="font-size:24px;font-weight:800;color:#b87a00;line-height:1;">${partialBlocks.length}</span>
+      <span style="font-size:11px;color:#b87a00;font-weight:600;line-height:1.3;">Partial<br>Issue</span>
+    </div>`:''}
+    ${todayConflicts.size?`<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:#FAECE7;border:1px solid #D85A30;flex:1;min-width:90px;">
+      <span style="font-size:24px;font-weight:800;color:#D85A30;line-height:1;">${todayConflicts.size}</span>
+      <span style="font-size:11px;color:#D85A30;font-weight:600;line-height:1.3;">Staff<br>Conflicts</span>
+    </div>`:''}
+  </div>`;
+
+  const staffBanner=S.calledOut.length?`<div style="background:#FFF3EE;border:1px solid #F0997B;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:12px;font-weight:700;color:#4A1B0C;flex-shrink:0;">🚨 Called out:</span>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;flex:1;">${S.calledOut.map(co=>{const s=gsN(co.sid);return`<span style="background:#F5C4B3;color:#4A1B0C;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;">${s?.name||'?'} <span style="opacity:.7">(${coLabel(co)})</span> <span onclick="event.stopPropagation();rmCO('${co.sid}')" style="cursor:pointer;font-weight:800;margin-left:3px;">×</span></span>`;}).join('')}</div>
+  </div>`:'';
+  const clientBanner=S.calledOutClients.length?`<div style="background:#F0F0FE;border:1px solid #AFA9EC;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:12px;font-weight:700;color:#3C3489;flex-shrink:0;">📵 Cancelled:</span>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;flex:1;">${S.calledOutClients.map(cid=>{const c=gcN(cid);return`<span style="background:#EEEDFE;color:#3C3489;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;">${c?.name||'?'} <span onclick="event.stopPropagation();rmClientCO('${cid}')" style="cursor:pointer;font-weight:800;margin-left:3px;">×</span></span>`;}).join('')}</div>
+  </div>`:'';
+
+  const mainContent=blocks.length===0
+    ?`<div style="text-align:center;padding:3rem 1rem;color:#aaa;font-size:13px;">No sessions scheduled for ${today}${S.calledOutClients.length?' (some clients cancelled)':''}</div>`
+    :`${section('Needs Coverage','#993C1D','#E24B4A',needsCoverage)}${section('Conflict / Partial Gap','#b87a00','#EF9F27',partialBlocks)}${section('Covered','#085041','#1D9E75',coveredBlocks)}${section('Temp Blocks','#185FA5','#85B7EB',tempBlocks)}`;
+
+  const sidebar=`<div class="sidebar">
+    <div class="ss">
+      <div class="sl" style="font-size:12px;font-weight:700;margin-bottom:8px;">Quick Actions</div>
+      <button class="push-btn" style="width:100%;justify-content:center;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:7px;" onclick="pushToPortal()">📤 Push to Staff Portal</button>
+      <button class="btn btn-b" style="width:100%;justify-content:center;margin-bottom:6px;" onclick="openTempModal('${today}')">+ Add Temp Block</button>
+      <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="doSave()">💾 Save</button>
+    </div>
+    <div class="ss">
+      <div class="sl">🚨 Staff Callout</div>
+      <select id="co-sel" style="margin-bottom:5px;"><option value="">Select staff…</option>${S.staff.map(s=>{const cos=getStaffCallout(s.id);const lbl=cos.length?cos.map(co=>' ('+coLabel(co)+')').join(''):'';return`<option value="${s.id}">${s.name}${lbl}</option>`;}).join('')}</select>
+      <div style="font-size:10px;color:#888;margin-bottom:3px;">Partial time out (blank = all day)</div>
+      <div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">
+        <select id="co-from" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">From…</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+        <span style="font-size:10px;color:#888;">–</span>
+        <select id="co-to" style="flex:1;font-size:11px;padding:4px 5px;"><option value="">To…</option>${TIMES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+      </div>
+      <button class="btn btn-d" style="width:100%;" onclick="mkCO()">Mark Called Out</button>
+    </div>
+    <div class="ss">
+      <div class="sl">📵 Client Cancellation</div>
+      <select id="client-co-sel" style="margin-bottom:6px;"><option value="">Select client…</option>${S.clients.map(c=>`<option value="${c.id}"${S.calledOutClients.includes(c.id)?' disabled':''}>${c.name}${S.calledOutClients.includes(c.id)?' (cancelled)':''}</option>`).join('')}</select>
+      <button class="btn" style="width:100%;background:#534AB7;color:#fff;border-color:#534AB7;" onclick="mkClientCO()">Mark Cancelled</button>
     </div>
     <div class="ss" style="border-left:3px solid #EF9F27;">
-      <div class="sl" style="color:#b87a00;">📅 Today-only schedule adjust</div>
-      <select id="tod-client-sel" style="margin-bottom:6px;" onchange="renderTodayOverrideBlocks()"><option value="">Select client...</option>${S.clients.map(c=>{const hasOv=(S.clientOverrides[c.id]||[]).length>0;return`<option value="${c.id}">${c.name}${hasOv?' ✓':''}</option>`;}).join('')}</select>
+      <div class="sl" style="color:#b87a00;">📅 Today-Only Adjust</div>
+      <select id="tod-client-sel" style="margin-bottom:6px;" onchange="renderTodayOverrideBlocks()"><option value="">Select client…</option>${S.clients.map(c=>{const hasOv=(S.clientOverrides[c.id]||[]).length>0;return`<option value="${c.id}">${c.name}${hasOv?' ✓':''}</option>`;}).join('')}</select>
       <div id="tod-block-list" style="font-size:11px;color:#888;">Select a client to see their blocks.</div>
     </div>
-    <div class="ss"><div class="sl">${today===realToday?'Today':'Day'} \u2014 ${today}</div>
-      <div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div>
-      <div style="background:#FAECE7;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#4A1B0C">Needs coverage</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${unc}</div></div>
-      ${getConflictingStaffOnDay(today).size>0?`<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:7px;padding:.625rem;margin-bottom:8px"><div style="font-size:10px;color:#D85A30;font-weight:500">⚠ Conflicts</div><div style="font-size:16px;font-weight:500;color:#D85A30">${getConflictingStaffOnDay(today).size} staff double-booked</div></div>`:''}
-      <button class="btn btn-b" style="width:100%;margin-bottom:6px" onclick="openTempModal('${today}')">+ Add temp block</button>
-      <button class="push-btn" style="width:100%;justify-content:center;border-radius:6px;padding:6px 12px" onclick="pushToPortal()">&#x1F4E4; Push to Staff Portal</button>
-    </div>
-    <div class="ss"><button class="btn btn-g" style="width:100%" onclick="doSave()">Save now</button></div>
-  </div><div class="content">${staffBanner}${clientBanner}<div class="card"><div class="ch"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="ct">${today===realToday?"Today's Sessions":"Sessions"} \u2014 ${today}</div>${today!==realToday?'<span style="font-size:11px;background:#EEEDFE;color:#534AB7;padding:2px 8px;border-radius:10px">not today</span>':''}</div><div style="display:flex;gap:4px;flex-wrap:wrap">${DAYS.map(d=>`<button class="btn btn-sm" style="font-size:11px;${d===today?'background:#534AB7;color:#fff;border-color:#534AB7':d===realToday?'border-color:#534AB7;color:#534AB7':''}" onclick="S.selectedDay='${d}';render()">${d}</button>`).join('')}</div></div>${sh}</div></div></div>`;
-}
+  </div>`;
 
+  return`<div style="width:100%;display:flex;align-items:flex-start;">
+    <div class="content" style="flex:1;min-width:0;padding:1.25rem;">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+        <div style="font-size:17px;font-weight:700;color:#111;">${today===realToday?'Today':'Sessions — '+today}</div>
+        ${today===realToday?`<div style="font-size:12px;color:#888;">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>`:''}
+        ${today!==realToday?`<span style="font-size:11px;background:#EEEDFE;color:#534AB7;padding:2px 8px;border-radius:8px;">not today</span>`:''}
+      </div>
+      ${dayPicker}
+      ${staffBanner}${clientBanner}
+      ${summaryBar}
+      ${mainContent}
+    </div>
+    ${sidebar}
+  </div>`;
+}
 function rWeek(){const byDay={};DAYS.forEach(d=>byDay[d]=getDayBlocks(d));const total=Object.values(byDay).reduce((s,a)=>s+a.length,0);const cov=Object.values(byDay).reduce((s,a)=>s+a.filter(x=>x.staffId&&!isStaffOut(x.staffId)).length,0);const cols=DAYS.map(d=>{const blocks=byDay[d];const isToday=d===todayDay();const inner=blocks.length===0?`<div style="padding:8px;font-size:11px;color:#888">No sessions</div>`:blocks.map(bl=>{const co=bl.staffId&&S.calledOut.some(c=>c.sid===bl.staffId&&(c.fromM===undefined||(t2m(bl.from)>=c.fromM&&t2m(bl.from)<c.toM)));const dayConflicts=getConflictingStaffOnDay(d);const hasConflict=bl.staffId&&dayConflicts.has(bl.staffId)&&!co;const gaps=getPartialGaps(bl,d);const cls=bl.isTemp?'wtmp':co?'wco':hasConflict?'wconflict':gaps?'wpartial':bl.staffId?'wa':'wu';let sname;if(!bl.staffId){sname='Tap to assign';}else if(co){sname=`\u26a0 ${gsN(bl.staffId)?.name} (out)`;}else if(hasConflict){sname=`\u26a0 ${gsN(bl.staffId)?.name} (conflict)`;}else if(bl.splits&&bl.splits.length>1){sname=bl.splits.map(sp=>`${gsN(sp.sid)?.name} ${sp.from}\u2013${sp.to}`).join(' | ');}else{sname=gsN(bl.staffId)?.name||'?';}const overrideLine=bl.overridden?`<div class="wsb-gap">📅 Today only: ${bl.from}\u2013${bl.to}</div>`:'';const gapLine=gaps?`<div class="wsb-gap">\u23F1 ${gaps}</div>`:'';const bkey=regBlock('w_'+bl.client.id+'_'+d+'_'+bl.from.replace(/ /g,'')+(bl.isTemp?bl.tempId:bl.blockIdx),{cid:bl.client.id,day:d,blockIdx:bl.blockIdx??-1,isTemp:!!bl.isTemp,tempId:bl.tempId||null});const delBtn=bl.isTemp?`<button class="wsb-del" onclick="event.stopPropagation();deleteTempBlock('${bl.tempId}')" title="Delete block">\u2715</button>`:`<button class="wsb-del" onclick="event.stopPropagation();deleteBlock('${bl.client.id}','${d}',${bl.blockIdx})" title="Delete block">\u2715</button>`;return`<div class="wsl"><div class="wsb ${cls}" onclick="openBlock('${bkey}')"><div class="wsb-info"><div class="wsb-time">${fmtBlock(bl)}${bl.isTemp?' \u2022 TEMP':''}</div><div class="wsb-client">${bl.client.name}</div><div class="wsb-staff">${sname}</div>${overrideLine}${gapLine}</div>${delBtn}</div></div>`;}).join('');return`<div class="wdc" style="${isToday?'border-color:#7F77DD':''}"><div class="wdh" style="${isToday?'background:#EEEDFE;color:#3C3489':''}"><span>${d}${isToday?' <span style="font-size:9px;background:#7F77DD;color:#fff;padding:1px 5px;border-radius:8px;margin-left:3px">Today</span>':''}</span><span style="font-size:9px;color:#888;margin-left:4px">${blocks.length}</span><button class="btn btn-sm" style="margin-left:auto;font-size:10px;background:#E6F1FB;color:#0C447C;border-color:#85B7EB" onclick="openTempModal('${d}')">+ Temp</button></div>${inner}</div>`;}).join('');
 return`<div style="width:100%"><div class="sidebar"><div class="ss"><div class="sl">This week</div><div style="background:#E6F1FB;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#042C53">Total</div><div style="font-size:20px;font-weight:500;color:#042C53">${total}</div></div><div style="background:#E1F5EE;border-radius:7px;padding:.625rem;margin-bottom:5px"><div style="font-size:10px;color:#085041">Covered</div><div style="font-size:20px;font-weight:500;color:#085041">${cov}</div></div><div style="background:#FAECE7;border-radius:7px;padding:.625rem"><div style="font-size:10px;color:#4A1B0C">Gaps</div><div style="font-size:20px;font-weight:500;color:#4A1B0C">${total-cov}</div></div></div><div class="ss" style="font-size:11px;color:#888;line-height:1.6">Click a block to reassign staff.<br>Click <strong>&#x2715;</strong> on a block to delete it.</div></div><div class="content"><div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;font-size:10px;color:#777"><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E1F5EE;display:inline-block"></span>Covered</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FFF8EC;border:1px solid #EF9F27;display:inline-block"></span>Partial coverage</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px dashed #F0997B;display:inline-block"></span>Needs coverage</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E6F1FB;border:1px dashed #85B7EB;display:inline-block"></span>Temp</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#F5C4B3;display:inline-block"></span>Called out</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#FAECE7;border:1px solid #D85A30;display:inline-block"></span>⚠ Conflict</span></div><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:600px">${cols}</div></div></div></div>`;}
 
