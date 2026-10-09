@@ -962,15 +962,16 @@ function rToday(){
   const todayConflicts=getConflictingStaffOnDay(today);
 
   // Categorize blocks
-  const needsCoverage=[],partialBlocks=[],coveredBlocks=[],tempBlocks=[];
+  const needsCoverage=[],conflictBlocks=[],partialBlocks=[],coveredBlocks=[],tempBlocks=[];
   blocks.forEach(bl=>{
     const staffOut=bl.staffId&&isStaffOut(bl.staffId);
     const gaps=getPartialGaps(bl,today);
     const conflict=bl.staffId&&todayConflicts.has(bl.staffId)&&!staffOut;
     if(bl.isTemp){tempBlocks.push({bl,gaps,conflict});}
     else if(!bl.staffId||staffOut){needsCoverage.push({bl,gaps,conflict});}
-    else if(gaps||conflict){partialBlocks.push({bl,gaps,conflict});}
-    else{coveredBlocks.push({bl,gaps,conflict});}
+    else if(conflict){conflictBlocks.push({bl,gaps,conflict:true});}
+    else if(gaps){partialBlocks.push({bl,gaps,conflict:false});}
+    else{coveredBlocks.push({bl,gaps,conflict:false});}
   });
 
   function blockCard(bl,gaps,conflict){
@@ -1022,7 +1023,7 @@ function rToday(){
 
   const dayPicker=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.25rem;">${DAYS.map(d=>`<button onclick="S.selectedDay='${d}';S.todayFilter='all';render()" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:${d===today?'700':'400'};border:1px solid ${d===today?'#534AB7':'#ddd'};background:${d===today?'#534AB7':d===realToday?'#EEEDFE':'#fafafa'};color:${d===today?'#fff':d===realToday?'#534AB7':'#555'};cursor:pointer;">${d}${d===realToday&&d!==today?' ·':''}</button>`).join('')}</div>`;
 
-  const allCount=coveredBlocks.length+tempBlocks.length+needsCoverage.length+partialBlocks.length;
+  const allCount=coveredBlocks.length+tempBlocks.length+needsCoverage.length+partialBlocks.length+conflictBlocks.length;
   const summaryBar=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;">
     <div onclick="S.todayFilter=S.todayFilter==='all'?'all':'all';S.todayFilter='all';render()" style="${tileStyle('all')}">
       <span style="font-size:22px;font-weight:800;color:#444;line-height:1;">${allCount}</span>
@@ -1040,8 +1041,8 @@ function rToday(){
       <span style="font-size:22px;font-weight:800;color:#b87a00;line-height:1;">${partialBlocks.length}</span>
       <span style="font-size:11px;color:#b87a00;font-weight:600;line-height:1.3;">Partial<br>Issue</span>
     </div>`:''}
-    ${todayConflicts.size||f==='conflict'?`<div onclick="S.todayFilter=S.todayFilter==='conflict'?'all':'conflict';render()" style="${tileStyle('conflict')}">
-      <span style="font-size:22px;font-weight:800;color:#D85A30;line-height:1;">${todayConflicts.size}</span>
+    ${conflictBlocks.length||f==='conflict'?`<div onclick="S.todayFilter=S.todayFilter==='conflict'?'all':'conflict';render()" style="${tileStyle('conflict')}">
+      <span style="font-size:22px;font-weight:800;color:#D85A30;line-height:1;">${conflictBlocks.length}</span>
       <span style="font-size:11px;color:#D85A30;font-weight:600;line-height:1.3;">Staff<br>Conflicts</span>
     </div>`:''}
   </div>`;
@@ -1067,10 +1068,9 @@ function rToday(){
   } else if(f==='partial'){
     mainContent=partialBlocks.length?section('Partial Issue','#b87a00','#EF9F27',partialBlocks):`<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">No partial issues</div>`;
   } else if(f==='conflict'){
-    const conflictItems=partialBlocks.filter(({conflict})=>conflict);
-    mainContent=conflictItems.length?section('Staff Conflicts','#D85A30','#D85A30',conflictItems):`<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">No staff conflicts</div>`;
+    mainContent=conflictBlocks.length?section('Staff Conflicts','#D85A30','#D85A30',conflictBlocks):`<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">No staff conflicts</div>`;
   } else {
-    mainContent=`${section('Needs Coverage','#993C1D','#E24B4A',needsCoverage)}${section('Conflict / Partial Gap','#b87a00','#EF9F27',partialBlocks)}${section('Covered','#085041','#1D9E75',coveredBlocks)}${section('Temp Blocks','#185FA5','#85B7EB',tempBlocks)}`;
+    mainContent=`${section('Needs Coverage','#993C1D','#E24B4A',needsCoverage)}${section('Staff Conflicts','#D85A30','#D85A30',conflictBlocks)}${section('Partial Gap','#b87a00','#EF9F27',partialBlocks)}${section('Covered','#085041','#1D9E75',coveredBlocks)}${section('Temp Blocks','#185FA5','#85B7EB',tempBlocks)}`;
   }
 
   const sidebar=`<div class="sidebar">
