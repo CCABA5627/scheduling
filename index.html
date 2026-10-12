@@ -385,33 +385,38 @@ let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1
 S.selDaysS=initSDS(S.staff);
 
 // clientOverrides: {cid: [{blockIdx, day, from, to}]} — today-only per-block time overrides
+function todayISO(){return new Date().toISOString().slice(0,10);}
 function getEffectiveBlocks(cid, day){
   const c=gcN(cid); if(!c) return [];
   const blocks=c.schedule[day]||[];
   const rawOvList=S.clientOverrides[cid];
   const ovList=Array.isArray(rawOvList)?rawOvList:[];
-  // How many blocks to use today
+  // An override is active if it has a matching date (today's ISO date) OR legacy day-only match
+  const iso=todayISO();
+  const activeOvs=ovList.filter(o=>o.date?o.date===iso&&o.day===day:o.day===day);
   const todayCount=(S.clientOverrideCounts?.[cid])||blocks.length;
-  const count=Math.max(blocks.length,ovList.filter(o=>o.day===day).length>0?todayCount:blocks.length);
+  const count=Math.max(blocks.length,activeOvs.length>0?todayCount:blocks.length);
   return Array.from({length:count},(_,idx)=>{
     const blk=blocks[idx]||{from:'',to:'',staffId:null,splits:null};
-    const ov=ovList.find(o=>o.day===day&&o.blockIdx===idx);
+    const ov=activeOvs.find(o=>o.blockIdx===idx);
     if(ov) return {...blk,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
     return blk;
-  }).filter(blk=>blk.from&&blk.to); // only include blocks that have times set
+  }).filter(blk=>blk.from&&blk.to);
 }
 function setClientOverride(cid,day,blockIdx,from,to){
   if(!S.clientOverrides[cid]) S.clientOverrides[cid]=[];
-  // Remove existing override for this block if any
-  S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx));
-  S.clientOverrides[cid].push({day,blockIdx,from,to});
+  const iso=todayISO();
+  // Remove existing override for this block/date
+  S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx&&(o.date===iso||!o.date)));
+  S.clientOverrides[cid].push({day,blockIdx,from,to,date:iso});
   markDirty();render();
   showToast(`${gcN(cid)?.name} block adjusted to ${from} – ${to} for today only`,false);
 }
 function clearClientOverride(cid,day,blockIdx){
   if(!S.clientOverrides[cid])return;
   if(day!==undefined&&blockIdx!==undefined){
-    S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx));
+    const iso=todayISO();
+    S.clientOverrides[cid]=S.clientOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx&&(o.date===iso||!o.date)));
     if(!S.clientOverrides[cid].length) delete S.clientOverrides[cid];
   } else {
     delete S.clientOverrides[cid];
@@ -1073,6 +1078,48 @@ function rToday(){
     mainContent=`${section('Needs Coverage','#993C1D','#E24B4A',needsCoverage)}${section('Staff Conflicts','#D85A30','#D85A30',conflictBlocks)}${section('Partial Gap','#b87a00','#EF9F27',partialBlocks)}${section('Covered','#085041','#1D9E75',coveredBlocks)}${section('Temp Blocks','#185FA5','#85B7EB',tempBlocks)}`;
   }
 
+  // Build "Today's Changes" summary
+  const iso=todayISO();
+  const changeItems=[];
+  // Staff callouts
+  S.calledOut.forEach(co=>{
+    const s=gsN(co.sid);if(!s)return;
+    changeItems.push({icon:'🚨',color:'#993C1D',bg:'#FFF3EE',border:'#F0997B',text:`<strong>${s.name}</strong> called out`,sub:coLabel(co)});
+  });
+  // Client cancellations
+  S.calledOutClients.forEach(cid=>{
+    const c=gcN(cid);if(!c)return;
+    changeItems.push({icon:'📵',color:'#3C3489',bg:'#F0F0FE',border:'#AFA9EC',text:`<strong>${c.name}</strong> cancelled today`});
+  });
+  // Today-only schedule overrides
+  Object.entries(S.clientOverrides).forEach(([cid,ovList])=>{
+    if(!Array.isArray(ovList))return;
+    const todayOvs=ovList.filter(o=>o.date===iso||(o.day===today&&!o.date));
+    if(!todayOvs.length)return;
+    const c=gcN(cid);if(!c)return;
+    todayOvs.forEach(ov=>{
+      changeItems.push({icon:'📅',color:'#b87a00',bg:'#FFF8EC',border:'#EF9F27',text:`<strong>${c.name}</strong> schedule adjusted`,sub:`Block ${ov.blockIdx+1}: ${ov.from}–${ov.to}`});
+    });
+  });
+  // Temp blocks for today
+  (S.tempBlocks||[]).filter(tb=>tb.day===today).forEach(tb=>{
+    const c=gcN(tb.cid);const s=gsN(tb.staffId);
+    changeItems.push({icon:'📌',color:'#185FA5',bg:'#E6F1FB',border:'#85B7EB',text:`<strong>Temp block</strong>${tb.label?' – '+tb.label:''}${c?' for '+c.name:''}`,sub:tb.from+'–'+tb.to+(s?' • '+s.name:'')});
+  });
+
+  const changesPanel=changeItems.length?`<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:1.25rem;">
+    <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;display:flex;align-items:center;gap:7px;">ℹ️ Today’s Changes<span style="font-size:10px;background:#eee;color:#666;padding:1px 7px;border-radius:10px;">${changeItems.length}</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${changeItems.map(ci=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;background:${ci.bg};border:1px solid ${ci.border};">
+        <span style="font-size:14px;flex-shrink:0;">${ci.icon}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:${ci.color};">${ci.text}</div>
+          ${ci.sub?`<div style="font-size:11px;color:${ci.color};opacity:.7;margin-top:1px;">${ci.sub}</div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`:'';
+
   const sidebar=`<div class="sidebar">
     <div class="ss">
       <div class="sl" style="font-size:12px;font-weight:700;margin-bottom:8px;">Quick Actions</div>
@@ -1112,6 +1159,7 @@ function rToday(){
         ${f!=='all'?`<button onclick="S.todayFilter='all';render()" style="font-size:11px;background:#f0f0f0;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;color:#555;">Clear filter ×</button>`:''}
       </div>
       ${dayPicker}
+      ${changesPanel}
       ${staffBanner}${clientBanner}
       ${summaryBar}
       ${mainContent}
