@@ -280,9 +280,10 @@ async function pushStaffSchedules() {
 
   S.staff.forEach(s => {
     DAYS.forEach(d => {
-      // Push each individual assigned session block
+      // Push each individual assigned session block — use getEffectiveBlocks so
+      // any today-set staff overrides (even for future days) are included
       S.clients.forEach(c => {
-        (c.schedule[d] || []).forEach(blk => {
+        getEffectiveBlocks(c.id, d).forEach(blk => {
           if(blk.splits && blk.splits.length) {
             blk.splits.forEach(sp => {
               if(sp.sid === s.id)
