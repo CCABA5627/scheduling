@@ -429,6 +429,7 @@ function togAck(key){
   markDirty();render();
 }
 function isAcked(key){const iso=todayISO();return !!(S.acknowledgedChanges[iso]&&S.acknowledgedChanges[iso][key]);}
+function togAckIdx(i){var key=(window._ackKeyMap||{})[i];if(key)togAck(key);}
 function clearClientOverride(cid,day,blockIdx){
   if(!S.clientOverrides[cid])return;
   if(day!==undefined&&blockIdx!==undefined){
@@ -1189,48 +1190,54 @@ function rToday(){
       text:'<strong>Temp block</strong>'+(tb.label?' – '+tb.label:'')+(c?' for '+c.name:''),
       sub:tb.from+'–'+tb.to+(s?' • '+s.name:'')+(tb.staffId?'':' • Unassigned')});
   })
-  const changesPanel=(()=>{
-    let rows=’’;
+  // Assign each change item a stable key; store in window._ackKeyMap keyed by integer index
+  window._ackKeyMap = {};
+  changeItems.forEach(function(ci,i){
+    var safeKey = String(i) + '_' + String(ci.sub||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,20);
+    ci._key = safeKey;
+    window._ackKeyMap[i] = safeKey;
+  });
+  window._changesPanelHTML=(function(){
+    var rows='';
     if(changeItems.length){
-      const ackedCount=changeItems.filter((_,i)=>isAcked(i+’|’+changeItems[i].text)).length;
-      rows=changeItems.map((ci,i)=>{
-        const key=i+’|’+ci.text;
-        const acked=isAcked(key);
-        const escapedKey=key.replace(/’/g,"\\’");
-        let s=`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;`;
-        s+=acked
-          ?`background:#f5f5f3;border:1px solid #ddd;opacity:.65;`
-          :`background:`+ci.bg+`;border:1px solid `+ci.border+`;`;
-        s+=`">`;
-        s+=`<span style="font-size:14px;flex-shrink:0;">`+ci.icon+`</span>`;
-        s+=`<div style="flex:1;min-width:0;">`;
-        s+=`<div style="font-size:12px;color:`+(acked?’#888’:ci.color)+`;">`+ci.text+`</div>`;
-        if(ci.sub)s+=`<div style="font-size:11px;color:`+(acked?’#aaa’:ci.color)+`;opacity:.7;margin-top:1px;">`+ci.sub+`</div>`;
-        s+=`</div>`;
-        s+=`<button onclick="togAck(‘`+escapedKey+`’)" title="`+(acked?’Mark unacknowledged’:’Mark acknowledged’)+`" style="flex-shrink:0;border:none;cursor:pointer;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:600;font-family:inherit;`;
-        s+=acked
-          ?`background:#e0e0e0;color:#888;`
-          :`background:#fff;border:1px solid #ccc;color:#888;`;
-        s+=`">`+(acked?’✓ Seen’:’✓’)+`</button>`;
-        s+=`</div>`;
-        return s;
-      }).join(‘’);
-      // summary line if some are acked
+      var ackedCount=changeItems.filter(function(ci){return isAcked(ci._key);}).length;
+      rows=changeItems.map(function(ci,i){
+        var acked=isAcked(ci._key);
+        var bg=acked ? 'background:#f5f5f3;border:1px solid #ddd;opacity:.65;' : 'background:'+ci.bg+';border:1px solid '+ci.border+';';
+        var textColor=acked ? '#888' : ci.color;
+        var subColor=acked ? '#aaa' : ci.color;
+        var btnStyle=acked ? 'background:#d4edda;color:#1D9E75;border:1px solid #1D9E75;' : 'background:#fff;color:#aaa;border:1px solid #ddd;';
+        var btnLabel=acked ? '&#10003; Seen' : '&#10003;';
+        var btnTitle=acked ? 'Unacknowledge' : 'Mark as seen';
+        var subHtml=ci.sub ? '<div style="font-size:11px;color:'+subColor+';opacity:.7;margin-top:1px;">'+ci.sub+'</div>' : '';
+        return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;'+bg+'">'
+          +'<span style="font-size:14px;flex-shrink:0;">'+ci.icon+'</span>'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:12px;color:'+textColor+';">'+ci.text+'</div>'
+          +subHtml
+          +'</div>'
+          +'<button onclick="togAckIdx('+i+')" title="'+btnTitle+'" style="flex-shrink:0;cursor:pointer;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;font-family:inherit;margin-left:4px;'+btnStyle+'">'+btnLabel+'</button>'
+          +'</div>';
+      }).join('');
       if(ackedCount>0&&ackedCount<changeItems.length){
-        rows+=`<div style="font-size:10px;color:#aaa;text-align:right;margin-top:2px;">${ackedCount} of ${changeItems.length} acknowledged</div>`;
-      } else if(ackedCount===changeItems.length&&changeItems.length>0){
-        rows+=`<div style="font-size:10px;color:#1D9E75;text-align:right;margin-top:2px;font-weight:600;">✓ All changes acknowledged</div>`;
+        rows+='<div style="font-size:10px;color:#aaa;text-align:right;margin-top:2px;">'+ackedCount+' of '+changeItems.length+' acknowledged</div>';
+      } else if(ackedCount===changeItems.length){
+        rows+='<div style="font-size:10px;color:#1D9E75;text-align:right;margin-top:2px;font-weight:600;">&#10003; All acknowledged</div>';
       }
     } else {
-      rows=`<div style="font-size:12px;color:#aaa;">No changes from the regular schedule today.</div>`;
+      rows='<div style="font-size:12px;color:#aaa;">No changes from the regular schedule today.</div>';
     }
-    const unackedCount=changeItems.filter((_,i)=>!isAcked(i+’|’+changeItems[i].text)).length;
-    const badge=changeItems.length
-      ?(unackedCount>0
-        ?`<span style="font-size:10px;background:#E24B4A;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">`+unackedCount+` new</span>`
-        :`<span style="font-size:10px;background:#1D9E75;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">✓ all seen</span>`)
-      :’’;
-    return `<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:1.25rem;"><div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;display:flex;align-items:center;">ℹ️ Today’s Changes`+badge+`</div><div style="display:flex;flex-direction:column;gap:6px;">`+rows+`</div></div>`;
+    var unackedCount=changeItems.filter(function(ci){return !isAcked(ci._key);}).length;
+    var badge='';
+    if(changeItems.length){
+      badge=unackedCount>0
+        ? '<span style="font-size:10px;background:#E24B4A;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">'+unackedCount+' new</span>'
+        : '<span style="font-size:10px;background:#1D9E75;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">&#10003; all seen</span>';
+    }
+    return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:1.25rem;">'
+      +'<div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;display:flex;align-items:center;">Today\'s Changes'+badge+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px;">'+rows+'</div>'
+      +'</div>';
   })()
 
   const sidebar=`<div class="sidebar">
@@ -1272,7 +1279,7 @@ function rToday(){
         ${f!=='all'?`<button onclick="S.todayFilter='all';render()" style="font-size:11px;background:#f0f0f0;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;color:#555;">Clear filter ×</button>`:''}
       </div>
       ${dayPicker}
-      ${changesPanel}
+      <div id="changes-panel-mount"></div>
       ${staffBanner}${clientBanner}
       ${summaryBar}
       ${mainContent}
@@ -1508,7 +1515,7 @@ async function sendAIMessage(){const inp=document.getElementById('ai-inp');if(!i
 function askSuggestion(text){const inp=document.getElementById('ai-inp');if(inp){inp.value=text;}sendAIMessage();}
 function rAI(){loadAIKey();const keySet=!!S.aiKey;const suggestions=['Who is overloaded this week?','Which clients have the weakest pod coverage?','Are there any scheduling conflicts I should know about?','Suggest how to balance the workload more evenly','Who can cover if someone calls out today?'];const msgsHtml=S.aiMessages.map(m=>{const cls=m.role==='error'?'error':m.role;return`<div class="ai-msg ${cls}">${m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;}).join('');const typingHtml=S.aiLoading?`<div class="ai-msg assistant"><div class="ai-typing"><span></span><span></span><span></span></div></div>`:'';return`<div class="ai-wrap">${!keySet?`<div class="ai-key-wrap"><div style="font-size:13px;font-weight:500;margin-bottom:.5rem">Enter your Anthropic API key to enable AI</div><div style="font-size:11px;color:#666;margin-bottom:.75rem">Your key is stored only in this browser and only sent to Anthropic when you ask a question. Get a key at <strong>console.anthropic.com</strong>.</div><div style="display:flex;gap:8px"><input type="password" id="ai-key-inp" placeholder="sk-ant-..." style="flex:1;font-family:monospace;font-size:12px"><button class="btn btn-p" onclick="const k=document.getElementById('ai-key-inp').value.trim();if(k){S.aiKey=k;saveAIKey(k);render();}else{showToast('Paste your API key first',true);}">Save key</button></div></div>`:`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem"><div style="font-size:12px;color:#1D9E75;font-weight:500">&#x2713; API key set</div><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="S.aiMessages=[];render()">Clear chat</button><button class="btn btn-sm btn-d" onclick="S.aiKey='';try{localStorage.removeItem('${AI_SK}');}catch(e){}render()">Remove key</button></div></div>`}${S.aiMessages.length===0&&keySet?`<div><div style="font-size:12px;font-weight:500;color:#888;margin-bottom:.5rem">Suggested questions</div><div class="ai-suggestions">${suggestions.map(s=>`<button class="ai-sug" onclick="askSuggestion('${s}')">${s}</button>`).join('')}</div></div>`:''}  <div class="ai-messages" id="ai-msgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem;padding-bottom:.5rem">${S.aiMessages.length===0&&keySet?`<div class="ai-msg system">Ask me anything about your schedule. I can see all your clients, staff, pods, and current assignments.</div>`:''} ${msgsHtml}${typingHtml}</div>${keySet?`<div class="ai-input-row"><textarea id="ai-inp" placeholder="Ask about your schedule... e.g. &quot;Alex called out Monday \u2014 who can cover?&quot;" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMessage();}" oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea><button class="ai-send" onclick="sendAIMessage()" ${S.aiLoading?'disabled':''}>Send</button></div>`:''}</div>`;}
 
-function render(){const mc=document.getElementById('mc');if(!mc)return;const block=['pods','data','save','ai'];mc.style.display=block.includes(S.tab)?'block':'flex';window._BM={};if(S.tab==='today')mc.innerHTML=rToday();else if(S.tab==='week')mc.innerHTML=rWeek();else if(S.tab==='clients')mc.innerHTML=rClients();else if(S.tab==='staff')mc.innerHTML=rStaff();else if(S.tab==='pods')mc.innerHTML=rPods();else if(S.tab==='callout')mc.innerHTML=rCallout();else if(S.tab==='data')mc.innerHTML=rData();else if(S.tab==='save')mc.innerHTML=rSave();else if(S.tab==='ai')mc.innerHTML=rAI();updSI();}
+function render(){const mc=document.getElementById('mc');if(!mc)return;const block=['pods','data','save','ai'];mc.style.display=block.includes(S.tab)?'block':'flex';window._BM={};if(S.tab==='today'){mc.innerHTML=rToday();const mp=document.getElementById('changes-panel-mount');if(mp&&window._changesPanelHTML)mp.innerHTML=window._changesPanelHTML;}else if(S.tab==='week')mc.innerHTML=rWeek();else if(S.tab==='clients')mc.innerHTML=rClients();else if(S.tab==='staff')mc.innerHTML=rStaff();else if(S.tab==='pods')mc.innerHTML=rPods();else if(S.tab==='callout')mc.innerHTML=rCallout();else if(S.tab==='data')mc.innerHTML=rData();else if(S.tab==='save')mc.innerHTML=rSave();else if(S.tab==='ai')mc.innerHTML=rAI();updSI();}
 
 tryLoad(); // async — loads from localStorage instantly, then syncs from cloud
 </script>
