@@ -381,26 +381,35 @@ const DD={
 function slotsInBlock(from,to){const lo=t2m(from),hi=t2m(to);if(lo===hi)return TIMES.filter(t=>t2m(t)===lo);return TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<hi);}
 function initSDS(st){const sd={};st.forEach(s=>{sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));});return sd;}
 
-let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},clientOverrideCounts:{},todayFilter:'all',calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
+let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},clientOverrideCounts:{},staffOverrides:{},todayFilter:'all',calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
 S.selDaysS=initSDS(S.staff);
 
-// clientOverrides: {cid: [{blockIdx, day, from, to}]} — today-only per-block time overrides
+// clientOverrides: {cid: [{blockIdx, day, from, to, date}]} — today-only per-block TIME overrides
+// staffOverrides:  {cid: [{blockIdx, day, staffId, date}]}   — today-only per-block STAFF overrides (substitutions)
+// Neither ever touches c.schedule — the clients tab is the permanent source of truth.
 function todayISO(){return new Date().toISOString().slice(0,10);}
 function getEffectiveBlocks(cid, day){
   const c=gcN(cid); if(!c) return [];
   const blocks=c.schedule[day]||[];
+  const iso=todayISO();
+  // Time overrides (today-only schedule adjustments)
   const rawOvList=S.clientOverrides[cid];
   const ovList=Array.isArray(rawOvList)?rawOvList:[];
-  // An override is active if it has a matching date (today's ISO date) OR legacy day-only match
-  const iso=todayISO();
   const activeOvs=ovList.filter(o=>o.date?o.date===iso&&o.day===day:o.day===day);
+  // Staff overrides (today-only substitutions assigned through callout coverage)
+  const rawStOvList=S.staffOverrides[cid];
+  const stOvList=Array.isArray(rawStOvList)?rawStOvList:[];
+  const activeStOvs=stOvList.filter(o=>o.date===iso&&o.day===day);
   const todayCount=(S.clientOverrideCounts?.[cid])||blocks.length;
   const count=Math.max(blocks.length,activeOvs.length>0?todayCount:blocks.length);
   return Array.from({length:count},(_,idx)=>{
     const blk=blocks[idx]||{from:'',to:'',staffId:null,splits:null};
     const ov=activeOvs.find(o=>o.blockIdx===idx);
-    if(ov) return {...blk,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
-    return blk;
+    const stOv=activeStOvs.find(o=>o.blockIdx===idx);
+    let result={...blk};
+    if(ov) result={...result,from:ov.from,to:ov.to,_overridden:true,_origFrom:blk.from,_origTo:blk.to};
+    if(stOv) result={...result,staffId:stOv.staffId,splits:null,_staffOverridden:true,_origStaffId:blk.staffId};
+    return result;
   }).filter(blk=>blk.from&&blk.to);
 }
 function setClientOverride(cid,day,blockIdx,from,to){
@@ -695,11 +704,21 @@ function getBlk(cid,day,blockIdx,tempId){
 
 // Add or replace a staff member's coverage on a block for specific slots
 function doAssign(cid,day,blockIdx,newSid,tempId){
-  const blk=getBlk(cid,day,blockIdx,tempId);
-  if(!blk)return;
-  // Simple (non-split) assign — just set staffId and clear splits
-  blk.staffId=newSid||null;
-  blk.splits=null;
+  if(tempId){
+    // Temp blocks are already today-only — safe to write directly
+    const blk=getBlk(cid,day,blockIdx,tempId);
+    if(!blk)return;
+    blk.staffId=newSid||null;blk.splits=null;
+  } else {
+    // Regular block — store as a today-only staff override, never touch c.schedule
+    const iso=todayISO();
+    if(!S.staffOverrides[cid])S.staffOverrides[cid]=[];
+    S.staffOverrides[cid]=S.staffOverrides[cid].filter(o=>!(o.day===day&&o.blockIdx===blockIdx&&o.date===iso));
+    if(newSid) S.staffOverrides[cid].push({day,blockIdx,staffId:newSid,date:iso});
+    const permStaff=gcN(cid)?.schedule[day]?.[blockIdx]?.staffId;
+    const subName=gsN(newSid)?.name;const permName=gsN(permStaff)?.name;
+    showToast((subName||'Staff')+' assigned for today only'+(permName?' (normally: '+permName+')':''),false);
+  }
   markDirty();closeModal();render();
 }
 
@@ -819,6 +838,7 @@ function applyState(p){
     }
   });
   S.clientOverrideCounts=p.clientOverrideCounts||{};
+  S.staffOverrides=p.staffOverrides||{};
   S.selClient=S.clients[0]?.id||null;
   S.selStaff=S.staff[0]?.id||null;
   S.lastSaved=p.savedAt||null;
@@ -858,7 +878,7 @@ async function tryLoad(){
 
 async function doSave(silent){
   try{
-    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,clientOverrideCounts:S.clientOverrideCounts||{},savedAt:new Date().toISOString()};
+    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,clientOverrideCounts:S.clientOverrideCounts||{},staffOverrides:S.staffOverrides||{},savedAt:new Date().toISOString()};
     // Save to localStorage immediately as fast cache
     try{localStorage.setItem(SK,JSON.stringify(d));}catch(e){}
     // Save to Supabase
@@ -882,7 +902,7 @@ function updSI(status){const el=document.getElementById('si');if(!el)return;if(s
 function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
 function exportJSON(){const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,exportedAt:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='ccaba-scheduling-backup.json';a.click();URL.revokeObjectURL(u);showToast('Backup downloaded',false);}
 function importJSON(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.clients||!p.staff)throw 0;S.clients=p.clients;S.staff=p.staff;S.pods=p.pods||{};S.tempBlocks=p.tempBlocks||[];S.selClient=S.clients[0]?.id||null;S.selStaff=S.staff[0]?.id||null;S.calledOut=[];S.selDaysS=initSDS(S.staff);markDirty();render();showToast('Imported — saving to cloud…',false);}catch(e){showToast('Invalid file',true);}};r.readAsText(f);};i.click();}
-function resetData(){if(!confirm('Reset ALL data to sample defaults? This will clear the cloud too.'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.tempBlocks=[];S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.dirty=true;S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}doSave(true);render();showToast('Reset to defaults',false);}
+function resetData(){if(!confirm('Reset ALL data to sample defaults? This will clear the cloud too.'))return;const f=JSON.parse(JSON.stringify(DD));Object.assign(S,f);S.tempBlocks=[];S.selClient=S.clients[0]?.id;S.selStaff=S.staff[0]?.id;S.calledOut=[];S.calledOutClients=[];S.clientOverrides={};S.staffOverrides={};S.dirty=true;S.selDaysS=initSDS(S.staff);try{localStorage.removeItem(SK);}catch(e){}doSave(true);render();showToast('Reset to defaults',false);}
 
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function gcN(id){return S.clients.find(c=>c.id===id);}
