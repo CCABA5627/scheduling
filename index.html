@@ -467,7 +467,7 @@ function openBlock(key){const d=window._BM[key];if(d)openAssignModal(d.cid,d.day
 function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   const c=gcN(cid);let blockFrom,blockTo,currentSid,slots,blk;
   if(isTemp){blk=S.tempBlocks.find(t=>t.id===tempId);if(!blk)return;blockFrom=blk.slots[0];blockTo=blk.slots[blk.slots.length-1];currentSid=blk.staffId;slots=blk.slots;}
-  else{blk=(c?.schedule[day]||[])[blockIdx];if(!blk)return;blockFrom=blk.from;blockTo=blk.to;currentSid=blk.staffId;slots=slotsInBlock(blk.from,blk.to);}
+  else{blk=(c?.schedule[day]||[])[blockIdx];if(!blk)return;blockFrom=blk.from;blockTo=blk.to;const effBlk=getEffectiveBlocks(cid,day)[blockIdx];currentSid=effBlk?effBlk.staffId:blk.staffId;slots=slotsInBlock(blk.from,blk.to);}
   const range=blockFrom+(blockFrom!==blockTo?' \u2013 '+blockTo:'');
   document.getElementById('modal-title-text').textContent=(c?.name||'?')+' \u00b7 '+day+' '+range;
   const pod=S.pods[cid]||[];
