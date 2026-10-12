@@ -568,15 +568,57 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     return`Would cover ${from} \u2013 ${displayEnd} (${dur})`;
   }
 
+  function getStaffTodaySchedule(sid){
+    // Returns array of {clientName, from, to, overlapsBlock} for all of today's assignments
+    const result=[];
+    const blockSlotsSet=new Set(slots);
+    S.clients.forEach(cl=>{
+      if(S.calledOutClients.includes(cl.id))return;
+      getEffectiveBlocks(cl.id,day).forEach((eb,idx)=>{
+        if(!eb.staffId)return;
+        // Check splits too
+        const assignedStaff=[];
+        if(eb.splits&&eb.splits.length) eb.splits.forEach(sp=>{ if(sp.sid===sid) assignedStaff.push({from:sp.from,to:sp.to}); });
+        else if(eb.staffId===sid) assignedStaff.push({from:eb.from,to:eb.to});
+        assignedStaff.forEach(slot=>{
+          const slotSet=new Set(slotsInBlock(slot.from,slot.to));
+          const overlaps=[...slotSet].some(s=>blockSlotsSet.has(s));
+          result.push({clientName:cl.name,from:slot.from,to:slot.to,overlapsBlock:overlaps});
+        });
+      });
+    });
+    // Also temp blocks
+    (S.tempBlocks||[]).filter(tb=>tb.day===day&&tb.staffId===sid).forEach(tb=>{
+      const slotSet=new Set(tb.slots);
+      const overlaps=[...slotSet].some(s=>blockSlotsSet.has(s));
+      result.push({clientName:gcN(tb.cid)?.name||'Temp',from:tb.from,to:tb.to,overlapsBlock:overlaps});
+    });
+    return result;
+  }
   function staffRow(sid,subText,isCur,hasConflict,note,extraStyle,mode){
     const s=gsN(sid);
     const assignFn=mode==='partial'
       ?`doAssignPartial('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')`
       :`doAssign('${cid}','${day}',${isTemp?-1:blockIdx},'${sid}','${tempId||''}')`;
+    // Build today's schedule display
+    const todaySched=getStaffTodaySchedule(sid);
+    let schedHtml='';
+    if(todaySched.length===0){
+      schedHtml='<div style="font-size:10px;color:#1D9E75;margin-top:2px;">Free all day</div>';
+    } else {
+      schedHtml='<div style="margin-top:3px;display:flex;flex-direction:column;gap:2px;">'+
+        todaySched.map(e=>{
+          const color=e.overlapsBlock?'#D85A30':'#185FA5';
+          const bg=e.overlapsBlock?'#FFF0EB':'#E6F1FB';
+          const icon=e.overlapsBlock?'⚠ ':'';
+          return`<span style="font-size:10px;background:${bg};color:${color};border-radius:4px;padding:1px 5px;display:inline-block;">${icon}${e.clientName} ${e.from}–${e.to}</span>`;
+        }).join('')+
+      '</div>';
+    }
     return`<div class="staff-opt${isCur?' current':''}" style="${hasConflict?'border:1.5px solid #F0997B;':''}${extraStyle||''}" onclick="${assignFn}">
       <div class="av av-s" style="width:28px;height:28px;font-size:10px">${ini(s.name)}</div>
       <div style="flex:1"><div class="staff-opt-name">${s.name}${isCur?' \u2713':''} ${hasConflict?'<span style="font-size:11px;color:#D85A30">⚠</span>':''}</div>
-      <div class="staff-opt-sub">${subText}</div>${note||''}</div>
+      ${schedHtml}${note||''}</div>
     </div>`;
   }
 
@@ -652,9 +694,8 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     podFull.forEach(o=>{
       const cf=chkConflict(o.sid,slots,cid,isTemp?-1:blockIdx,tempId||null);
       let note='';
-      if(cf.hasConflict){note=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Overlap: ${cf.conflicts.map(x=>x.name+' '+x.from+'-'+x.to).join(', ')}</div>`;}
-      else if(o.usedOther){note=`<div style="font-size:10px;color:#888;margin-top:2px">Also on another block today</div>`;}
-      html+=staffRow(o.sid,o.score+' overlap slots',o.sid===currentSid,cf.hasConflict,note);
+      if(cf.hasConflict){note=`<div style="font-size:10px;color:#D85A30;margin-top:2px;font-weight:500">⚠ Conflict with: ${cf.conflicts.map(x=>x.name+' '+x.from+'-'+x.to).join(', ')}</div>`;}
+      html+=staffRow(o.sid,'',o.sid===currentSid,cf.hasConflict,note);
     });
   }
 
@@ -684,7 +725,7 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     html+=`<div class="modal-section" style="margin-top:10px;">🔓 Not in pod — free for full block</div>`;
     html+=`<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 8px;background:#FFF8EC;border-radius:6px;border:1px solid #FAC775;">Available with no conflicts. Go to Pods tab to add permanently.</div>`;
     npFull.forEach(o=>{
-      const note=usedOther.has(o.sid)?`<div style="font-size:10px;color:#888;margin-top:2px">Also on another block today</div>`:'';
+      const note='';
       html+=staffRow(o.sid,'Available — no conflicts',o.sid===currentSid,false,note,null,null);
     });
   }
