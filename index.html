@@ -1126,34 +1126,48 @@ function rToday(){
         sub:'Block '+(ov.blockIdx+1)+': normally '+origTime+' → today '+ov.from+'–'+ov.to});
     });
   });
-  // 4. Staff covering a client they are NOT the permanent assigned staff for
-  //    (covers both "in pod but not their client" and "out of pod" substitutions)
+  // 4. Staff covering a client they are NOT the permanent assigned staff for.
+  //    Three cases: (a) staff override assigned via callout tool today,
+  //                 (b) permanent block has different staff than today's effective staff,
+  //                 (c) staff is covering a client they have NO permanent blocks with at all.
+  const seenSubs=new Set(); // deduplicate by "staffId|clientId"
   getDayBlocks(today).forEach(bl=>{
     if(!bl.staffId||bl.isTemp)return;
     const c=gcN(bl.client.id);if(!c)return;
-    // Find the permanent block to compare assigned staff
+    const sub=gsN(bl.staffId);if(!sub)return;
     const permBlocks=c.schedule[today]||[];
     const permBlock=permBlocks[bl.blockIdx];
-    if(!permBlock)return; // new block, no permanent assignment to compare
-    const permStaffId=permBlock.staffId;
-    // If permanent staff differs from today's staff, it's a sub
-    if(permStaffId&&permStaffId!==bl.staffId&&!isStaffOut(bl.staffId)){
-      const sub=gsN(bl.staffId);const perm=gsN(permStaffId);
-      if(sub&&perm){
+    const permStaffId=permBlock?.staffId||null;
+    // Is this staff member the permanent staff for ANY block of this client today?
+    const isPermanentForClient=permBlocks.some(pb=>pb.staffId===bl.staffId);
+    // Case (a)/(b): someone else is normally assigned and today's staff is different
+    const isDifferentFromPerm=permStaffId&&permStaffId!==bl.staffId;
+    // Case (c): this staff has no permanent block with this client today at all
+    const hasNoPermanentRole=!isPermanentForClient;
+    if((isDifferentFromPerm||hasNoPermanentRole)&&!isStaffOut(bl.staffId)){
+      const key=bl.staffId+'|'+c.id;
+      if(!seenSubs.has(key)){
+        seenSubs.add(key);
+        const permName=permStaffId?gsN(permStaffId)?.name:null;
         changeItems.push({icon:'🔄',color:'#185FA5',bg:'#E6F1FB',border:'#85B7EB',
           text:'<strong>'+sub.name+'</strong> covering <strong>'+c.name+'</strong>',
-          sub:'Usually: '+perm.name+' • '+bl.from+'–'+bl.to});
+          sub:(permName?'Usually: '+permName+' • ':'Not their regular client • ')+bl.from+'–'+bl.to});
       }
     }
-    // Also catch splits where any segment is covered by non-permanent staff
+    // Also catch splits where a segment is covered by non-permanent staff
     if(bl.splits&&bl.splits.length){
       bl.splits.forEach(sp=>{
-        if(permStaffId&&sp.sid!==permStaffId&&!isStaffOut(sp.sid)){
-          const sub=gsN(sp.sid);const perm=gsN(permStaffId);
-          if(sub&&perm){
+        if(sp.sid===bl.staffId)return;
+        const spSub=gsN(sp.sid);if(!spSub)return;
+        const spIsPerm=permBlocks.some(pb=>pb.staffId===sp.sid);
+        if(!spIsPerm&&!isStaffOut(sp.sid)){
+          const key2=sp.sid+'|'+c.id;
+          if(!seenSubs.has(key2)){
+            seenSubs.add(key2);
+            const permName=permStaffId?gsN(permStaffId)?.name:null;
             changeItems.push({icon:'🔄',color:'#185FA5',bg:'#E6F1FB',border:'#85B7EB',
-              text:'<strong>'+sub.name+'</strong> covering <strong>'+c.name+'</strong> ('+sp.from+'–'+sp.to+')',
-              sub:'Usually: '+perm.name});
+              text:'<strong>'+spSub.name+'</strong> covering <strong>'+c.name+'</strong> ('+sp.from+'–'+sp.to+')',
+              sub:permName?'Usually: '+permName:'Not their regular client'});
           }
         }
       });
