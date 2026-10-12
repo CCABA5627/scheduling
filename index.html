@@ -422,6 +422,23 @@ function setClientOverride(cid,day,blockIdx,from,to){
   markDirty();render();
   showToast(`${gcN(cid)?.name} block adjusted to ${from} – ${to} for today only`,false);
 }
+function undoChangeItem(i){
+  var ci=(window._changeItemsData||[])[i];
+  if(!ci||!ci.undo)return;
+  var u=ci.undo;
+  if(u.type==='staff-callout'){rmCO(u.sid);markDirty();render();showToast('Removed callout — '+u.label.replace('Restore ',''),false);}
+  else if(u.type==='client-cancel'){rmClientCO(u.cid);showToast(u.label,false);}
+  else if(u.type==='time-override'){
+    if(S.clientOverrides[u.cid]){
+      var iso2=todayISO();
+      S.clientOverrides[u.cid]=S.clientOverrides[u.cid].filter(function(o){return!(o.blockIdx===u.blockIdx&&(o.date===iso2||!o.date));});
+      if(!S.clientOverrides[u.cid].length)delete S.clientOverrides[u.cid];
+    }
+    markDirty();render();showToast('Time override removed',false);
+  }
+  else if(u.type==='staff-assign'){doAssign(u.cid,u.day,u.blockIdx,null,'');}
+  else if(u.type==='temp-block'){deleteTempBlock(u.tempId);}
+}
 function togAck(key){
   const iso=todayISO();
   if(!S.acknowledgedChanges[iso])S.acknowledgedChanges[iso]={};
@@ -1162,12 +1179,14 @@ function rToday(){
   // 1. Staff callouts
   S.calledOut.forEach(co=>{
     const s=gsN(co.sid);if(!s)return;
-    changeItems.push({icon:'🚨',color:'#993C1D',bg:'#FFF3EE',border:'#F0997B',text:'<strong>'+s.name+'</strong> called out',sub:coLabel(co)});
+    changeItems.push({icon:'🚨',color:'#993C1D',bg:'#FFF3EE',border:'#F0997B',text:'<strong>'+s.name+'</strong> called out',sub:coLabel(co),
+      undo:{type:'staff-callout',sid:co.sid,label:'Restore '+s.name}});
   });
   // 2. Client cancellations
   S.calledOutClients.forEach(cid=>{
     const c=gcN(cid);if(!c)return;
-    changeItems.push({icon:'📵',color:'#3C3489',bg:'#F0F0FE',border:'#AFA9EC',text:'<strong>'+c.name+'</strong> cancelled today'});
+    changeItems.push({icon:'📵',color:'#3C3489',bg:'#F0F0FE',border:'#AFA9EC',text:'<strong>'+c.name+'</strong> cancelled today',
+      undo:{type:'client-cancel',cid,label:'Restore '+c.name}});
   });
   // 3. Today-only time adjustments (client coming at different time than scheduled)
   Object.entries(S.clientOverrides).forEach(([cid,ovList])=>{
@@ -1181,7 +1200,8 @@ function rToday(){
       const origTime=orig?orig.from+'–'+orig.to:'(no perm block)';
       changeItems.push({icon:'📅',color:'#b87a00',bg:'#FFF8EC',border:'#EF9F27',
         text:'<strong>'+c.name+'</strong> time changed today',
-        sub:'Block '+(ov.blockIdx+1)+': normally '+origTime+' → today '+ov.from+'–'+ov.to});
+        sub:'Block '+(ov.blockIdx+1)+': normally '+origTime+' → today '+ov.from+'–'+ov.to,
+        undo:{type:'time-override',cid,blockIdx:ov.blockIdx,label:'Revert time'}});
     });
   });
   // 4. Staff covering a client they are NOT the permanent assigned staff for.
@@ -1211,7 +1231,8 @@ function rToday(){
         const permName=permStaffId?gsN(permStaffId)?.name:null;
         changeItems.push({icon:'🔄',color:'#185FA5',bg:'#E6F1FB',border:'#85B7EB',
           text:'<strong>'+sub.name+'</strong> covering <strong>'+c.name+'</strong>',
-          sub:(permName?'Usually: '+permName+' • ':'Not their regular client • ')+bl.from+'–'+bl.to});
+          sub:(permName?'Usually: '+permName+' • ':'Not their regular client • ')+bl.from+'–'+bl.to,
+          undo:{type:'staff-assign',cid:c.id,day:today,blockIdx:bl.blockIdx,label:'Remove assignment'}});
       }
     }
     // Also catch splits where a segment is covered by non-permanent staff
@@ -1238,10 +1259,12 @@ function rToday(){
     const c=gcN(tb.cid);const s=gsN(tb.staffId);
     changeItems.push({icon:'📌',color:'#185FA5',bg:'#E6F1FB',border:'#85B7EB',
       text:'<strong>Temp block</strong>'+(tb.label?' – '+tb.label:'')+(c?' for '+c.name:''),
-      sub:tb.from+'–'+tb.to+(s?' • '+s.name:'')+(tb.staffId?'':' • Unassigned')});
+      sub:tb.from+'–'+tb.to+(s?' • '+s.name:'')+(tb.staffId?'':' • Unassigned'),
+      undo:{type:'temp-block',tempId:tb.id,label:'Delete block'}});
   })
   // Assign each change item a stable key; store in window._ackKeyMap keyed by integer index
   window._ackKeyMap = {};
+  window._changeItemsData = changeItems;
   changeItems.forEach(function(ci,i){
     var safeKey = String(i) + '_' + String(ci.sub||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,20);
     ci._key = safeKey;
@@ -1260,13 +1283,20 @@ function rToday(){
         var btnLabel=acked ? '&#10003; Seen' : '&#10003;';
         var btnTitle=acked ? 'Unacknowledge' : 'Mark as seen';
         var subHtml=ci.sub ? '<div style="font-size:11px;color:'+subColor+';opacity:.7;margin-top:1px;">'+ci.sub+'</div>' : '';
+        var undoBtn='';
+        if(ci.undo&&!acked){
+          undoBtn='<button onclick="undoChangeItem('+i+')" title="'+ci.undo.label+'" style="flex-shrink:0;cursor:pointer;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;font-family:inherit;background:#fff3f3;color:#993C1D;border:1px solid #f0a090;">↩ Undo</button>';
+        }
         return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;'+bg+'">'
           +'<span style="font-size:14px;flex-shrink:0;">'+ci.icon+'</span>'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:12px;color:'+textColor+';">'+ci.text+'</div>'
           +subHtml
           +'</div>'
-          +'<button onclick="togAckIdx('+i+')" title="'+btnTitle+'" style="flex-shrink:0;cursor:pointer;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;font-family:inherit;margin-left:4px;'+btnStyle+'">'+btnLabel+'</button>'
+          +'<div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">'
+          +undoBtn
+          +'<button onclick="togAckIdx('+i+')" title="'+btnTitle+'" style="cursor:pointer;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;font-family:inherit;'+btnStyle+'">'+btnLabel+'</button>'
+          +'</div>'
           +'</div>';
       }).join('');
       if(ackedCount>0&&ackedCount<changeItems.length){
