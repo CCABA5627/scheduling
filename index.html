@@ -935,7 +935,7 @@ function bestForSlot(cid,day,slot,excl){const pod=S.pods[cid]||[];const res=[];p
 function todayDay(){const d=ALL_DAYS[new Date().getDay()];return DAYS.includes(d)?d:DAYS[0];}
 function go(t){S.tab=t;document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));render();}
 function fmtBlock(blk){return blk.from+(blk.from!==blk.to?' \u2013 '+blk.to:'');}
-function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;getEffectiveBlocks(c.id,day).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,splits:blk.splits||null,isTemp:false,blockIdx:idx,overridden:blk._overridden||false});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c)return;// Show temp blocks even if client is cancelled — temp block IS the replacement session
+function getDayBlocks(day){const out=[];S.clients.forEach(c=>{if(S.calledOutClients.includes(c.id))return;getEffectiveBlocks(c.id,day).forEach((blk,idx)=>{out.push({client:c,from:blk.from,to:blk.to,staffId:blk.staffId,splits:blk.splits||null,isTemp:false,blockIdx:idx,overridden:blk._overridden||false,staffOverridden:blk._staffOverridden||false,origStaffId:blk._origStaffId||null});});});(S.tempBlocks||[]).filter(tb=>tb.day===day).forEach(tb=>{const c=gcN(tb.cid);if(!c)return;// Show temp blocks even if client is cancelled — temp block IS the replacement session
 out.push({client:c,from:tb.from,to:tb.to,staffId:tb.staffId,splits:tb.splits||null,isTemp:true,tempId:tb.id,label:tb.label,slots:tb.slots,clientCancelled:S.calledOutClients.includes(tb.cid)});});out.sort((a,b)=>t2m(a.from)-t2m(b.from));return out;}
 
 function getPartialGaps(bl,day){
@@ -1154,7 +1154,9 @@ function rToday(){
     const isDifferentFromPerm=permStaffId&&permStaffId!==bl.staffId;
     // Case (c): this staff has no permanent block with this client today at all
     const hasNoPermanentRole=!isPermanentForClient;
-    if((isDifferentFromPerm||hasNoPermanentRole)&&!isStaffOut(bl.staffId)){
+    // Also catch: block was unassigned in the permanent schedule, filled today via staff override
+    const wasUnassignedFilled=bl.staffOverridden&&bl.origStaffId===null&&!permStaffId;
+    if((isDifferentFromPerm||hasNoPermanentRole||wasUnassignedFilled)&&!isStaffOut(bl.staffId)){
       const key=bl.staffId+'|'+c.id;
       if(!seenSubs.has(key)){
         seenSubs.add(key);
