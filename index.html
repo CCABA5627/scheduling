@@ -381,7 +381,7 @@ const DD={
 function slotsInBlock(from,to){const lo=t2m(from),hi=t2m(to);if(lo===hi)return TIMES.filter(t=>t2m(t)===lo);return TIMES.filter(t=>t2m(t)>=lo&&t2m(t)<hi);}
 function initSDS(st){const sd={};st.forEach(s=>{sd[s.id]=new Set(Object.keys(s.availability).filter(d=>DAYS.includes(d)));});return sd;}
 
-let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},clientOverrideCounts:{},staffOverrides:{},todayFilter:'all',calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
+let S={tab:'today',...JSON.parse(JSON.stringify(DD)),selClient:'c1',selStaff:'s1',calloutStaff:null,calloutClient:null,calledOut:[],calledOutClients:[],clientOverrides:{},clientOverrideCounts:{},staffOverrides:{},acknowledgedChanges:{},todayFilter:'all',calloutMode:'staff',edTab:'clients',expEdit:null,dirty:false,lastSaved:null,podView:'clients',selPodClient:null,selPodStaff:null,aiKey:'',aiMessages:[],aiLoading:false,selectedDay:null};
 S.selDaysS=initSDS(S.staff);
 
 // clientOverrides: {cid: [{blockIdx, day, from, to, date}]} — today-only per-block TIME overrides
@@ -421,6 +421,14 @@ function setClientOverride(cid,day,blockIdx,from,to){
   markDirty();render();
   showToast(`${gcN(cid)?.name} block adjusted to ${from} – ${to} for today only`,false);
 }
+function togAck(key){
+  const iso=todayISO();
+  if(!S.acknowledgedChanges[iso])S.acknowledgedChanges[iso]={};
+  if(S.acknowledgedChanges[iso][key])delete S.acknowledgedChanges[iso][key];
+  else S.acknowledgedChanges[iso][key]=true;
+  markDirty();render();
+}
+function isAcked(key){const iso=todayISO();return !!(S.acknowledgedChanges[iso]&&S.acknowledgedChanges[iso][key]);}
 function clearClientOverride(cid,day,blockIdx){
   if(!S.clientOverrides[cid])return;
   if(day!==undefined&&blockIdx!==undefined){
@@ -839,6 +847,7 @@ function applyState(p){
   });
   S.clientOverrideCounts=p.clientOverrideCounts||{};
   S.staffOverrides=p.staffOverrides||{};
+  S.acknowledgedChanges=p.acknowledgedChanges||{};
   S.selClient=S.clients[0]?.id||null;
   S.selStaff=S.staff[0]?.id||null;
   S.lastSaved=p.savedAt||null;
@@ -878,7 +887,7 @@ async function tryLoad(){
 
 async function doSave(silent){
   try{
-    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,clientOverrideCounts:S.clientOverrideCounts||{},staffOverrides:S.staffOverrides||{},savedAt:new Date().toISOString()};
+    const d={clients:S.clients,staff:S.staff,pods:S.pods,tempBlocks:S.tempBlocks,calledOut:S.calledOut,calledOutClients:S.calledOutClients,clientOverrides:S.clientOverrides,clientOverrideCounts:S.clientOverrideCounts||{},staffOverrides:S.staffOverrides||{},acknowledgedChanges:S.acknowledgedChanges||{},savedAt:new Date().toISOString()};
     // Save to localStorage immediately as fast cache
     try{localStorage.setItem(SK,JSON.stringify(d));}catch(e){}
     // Save to Supabase
@@ -1181,20 +1190,46 @@ function rToday(){
       sub:tb.from+'–'+tb.to+(s?' • '+s.name:'')+(tb.staffId?'':' • Unassigned')});
   })
   const changesPanel=(()=>{
-    let rows='';
+    let rows=’’;
     if(changeItems.length){
-      rows=changeItems.map(ci=>{
-        let s=`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;background:`+ci.bg+`;border:1px solid `+ci.border+`;">`;
+      const ackedCount=changeItems.filter((_,i)=>isAcked(i+’|’+changeItems[i].text)).length;
+      rows=changeItems.map((ci,i)=>{
+        const key=i+’|’+ci.text;
+        const acked=isAcked(key);
+        const escapedKey=key.replace(/’/g,"\\’");
+        let s=`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;`;
+        s+=acked
+          ?`background:#f5f5f3;border:1px solid #ddd;opacity:.65;`
+          :`background:`+ci.bg+`;border:1px solid `+ci.border+`;`;
+        s+=`">`;
         s+=`<span style="font-size:14px;flex-shrink:0;">`+ci.icon+`</span>`;
-        s+=`<div style="flex:1;min-width:0;"><div style="font-size:12px;color:`+ci.color+`;">`+ci.text+`</div>`;
-        if(ci.sub)s+=`<div style="font-size:11px;color:`+ci.color+`;opacity:.7;margin-top:1px;">`+ci.sub+`</div>`;
-        s+=`</div></div>`;
+        s+=`<div style="flex:1;min-width:0;">`;
+        s+=`<div style="font-size:12px;color:`+(acked?’#888’:ci.color)+`;">`+ci.text+`</div>`;
+        if(ci.sub)s+=`<div style="font-size:11px;color:`+(acked?’#aaa’:ci.color)+`;opacity:.7;margin-top:1px;">`+ci.sub+`</div>`;
+        s+=`</div>`;
+        s+=`<button onclick="togAck(‘`+escapedKey+`’)" title="`+(acked?’Mark unacknowledged’:’Mark acknowledged’)+`" style="flex-shrink:0;border:none;cursor:pointer;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:600;font-family:inherit;`;
+        s+=acked
+          ?`background:#e0e0e0;color:#888;`
+          :`background:#fff;border:1px solid #ccc;color:#888;`;
+        s+=`">`+(acked?’✓ Seen’:’✓’)+`</button>`;
+        s+=`</div>`;
         return s;
-      }).join('');
+      }).join(‘’);
+      // summary line if some are acked
+      if(ackedCount>0&&ackedCount<changeItems.length){
+        rows+=`<div style="font-size:10px;color:#aaa;text-align:right;margin-top:2px;">${ackedCount} of ${changeItems.length} acknowledged</div>`;
+      } else if(ackedCount===changeItems.length&&changeItems.length>0){
+        rows+=`<div style="font-size:10px;color:#1D9E75;text-align:right;margin-top:2px;font-weight:600;">✓ All changes acknowledged</div>`;
+      }
     } else {
       rows=`<div style="font-size:12px;color:#aaa;">No changes from the regular schedule today.</div>`;
     }
-    const badge=changeItems.length?`<span style="font-size:10px;background:#eee;color:#555;padding:1px 8px;border-radius:10px;margin-left:6px;">`+changeItems.length+`</span>`:'';
+    const unackedCount=changeItems.filter((_,i)=>!isAcked(i+’|’+changeItems[i].text)).length;
+    const badge=changeItems.length
+      ?(unackedCount>0
+        ?`<span style="font-size:10px;background:#E24B4A;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">`+unackedCount+` new</span>`
+        :`<span style="font-size:10px;background:#1D9E75;color:#fff;padding:1px 8px;border-radius:10px;margin-left:6px;">✓ all seen</span>`)
+      :’’;
     return `<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px 16px;margin-bottom:1.25rem;"><div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;display:flex;align-items:center;">ℹ️ Today’s Changes`+badge+`</div><div style="display:flex;flex-direction:column;gap:6px;">`+rows+`</div></div>`;
   })()
 
