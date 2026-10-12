@@ -636,7 +636,15 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
     </div>`;
   }
 
-  let html=currentCoverageHtml;
+  // Remove assignment button at TOP so it's always visible regardless of list length
+  let removeBtn='';
+  if(currentSid||isTemp){
+    removeBtn=`<button class="unassign-btn" style="margin-bottom:8px;" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">✕ Remove assignment</button>`;
+  }
+  if(isTemp){
+    removeBtn+=`<button class="unassign-btn" style="color:#534AB7;border-color:#534AB7;margin-bottom:8px;margin-top:${currentSid?'4':'0'}px;" onclick="deleteTempBlock('${tempId}')">🗑 Delete this temp block</button>`;
+  }
+  let html=currentCoverageHtml+removeBtn;
 
   // 1. Pod — full block
   if(podFull.length){
@@ -698,8 +706,6 @@ function openAssignModal(cid,day,blockIdx,isTemp,tempId){
   }
 
   if(!html)html='<div style="font-size:12px;color:#888;padding:.5rem 0">No staff available during this time.</div>';
-  if(!blk?.splits&&(currentSid||isTemp))html+=`<button class="unassign-btn" onclick="doAssign('${cid}','${day}',${isTemp?-1:blockIdx},null,'${tempId||''}')">Remove assignment</button>`;
-  if(isTemp)html+=`<button class="unassign-btn" style="color:#534AB7;border-color:#534AB7;margin-top:4px" onclick="deleteTempBlock('${tempId}')">Delete this temp block</button>`;
   document.getElementById('modal-body').innerHTML=html;
   document.getElementById('assign-modal').classList.remove('hidden');
 }
